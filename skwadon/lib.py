@@ -1,0 +1,145 @@
+import os
+import random
+import sys
+import tempfile
+
+def removeKey(info: dict, key: str):
+    if key in info:
+        del info[key]
+
+def exec_diff(content1, content2, dst_file, name1 = "1", name2 = "2"):
+    sys.stdout.flush()
+    sys.stderr.flush()
+    tmpdir = tempfile.mkdtemp()
+    fifo1 = tmpdir + "/" + name1
+    fifo2 = tmpdir + "/" + name2
+    os.mkfifo(fifo1)
+    os.mkfifo(fifo2)
+    pid = os.fork()
+    if pid == 0:
+        if dst_file != None:
+            sys.stdout = open(dst_file, "w")
+        os.execvp("diff", ["diff", "-u", fifo1, fifo2])
+    pid1 = os.fork()
+    if pid1 == 0:
+        writer1 = open(fifo1, "w")
+        writer1.write(content1)
+        writer1.close()
+        sys.exit()
+    pid2 = os.fork()
+    if pid2 == 0:
+        writer2 = open(fifo2, "w")
+        writer2.write(content2)
+        writer2.close()
+        sys.exit()
+    os.waitpid(pid1, 0)
+    os.waitpid(pid2, 0)
+    os.waitpid(pid, 0)
+    os.remove(fifo1)
+    os.remove(fifo2)
+    os.rmdir(tmpdir)
+
+def normalize_script_source(script_source):
+    lines = []
+    for line in script_source.split("\n"):
+        lines.append(line.rstrip(" \t\r"))
+    while len(lines) > 0 and lines[0] == "":
+        lines = lines[1:]
+    while len(lines) > 0 and lines[len(lines) - 1] == "":
+        lines = lines[0 : len(lines) - 1]
+    return "\n".join(lines) + "\n"
+
+def script_sources_to_yaml(script_dir):
+    result = {}
+    for file_name in os.listdir(script_dir):
+        if os.path.isdir(file_name):
+            result[file_name] = script_sources_to_yaml(script_dir + "/" + file_name)
+        else:
+            with open(script_dir + "/" + file_name) as fh:
+                result[file_name] = normalize_script_source(fh.read())
+    return result
+
+def random_string(length):
+    chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    return ''.join([random.choice(chars) for i in range(length)])
+
+def update_dict(data1, data2):
+    if not isinstance(data1, dict):
+        return data2
+    if not isinstance(data2, dict):
+        return data2
+    result = {}
+    for key, value in data1.items():
+        if key in data2:
+            result[key] = update_dict(value, data2[key])
+        else:
+            result[key] = value
+    for key, value in data2.items():
+        if not key in data1:
+            result[key] = value
+    return result
+
+def intersect_dict(data1, data2):
+    if not isinstance(data1, dict):
+        return data1
+    if not isinstance(data2, dict):
+        return data1
+    result = {}
+    for key, value in data1.items():
+        if key in data2:
+            result[key] = intersect_dict(value, data2[key])
+    return result
+
+def pickup(src_data, keys):
+    src_data2 = {}
+    for key in keys:
+        if dictlib_in(src_data, key):
+            dictlib_put(src_data2, key, dictlib_get(src_data, key))
+    return src_data2
+
+def dictlib_in(data, key):
+    idx = key.find(".")
+    if idx < 0:
+        if key in data:
+            return True
+        else:
+            return False
+    key2 = key[0:idx]
+    if not key2 in data:
+        return False
+    return dictlib_in(data[key2], key[idx+1:])
+
+def dictlib_get(data, key):
+    idx = key.find(".")
+    if idx < 0:
+        if key in data:
+            return data[key]
+        else:
+            return None
+    key2 = key[0:idx]
+    if not key2 in data:
+        return None
+    return dictlib_get(data[key2], key[idx+1:])
+
+def dictlib_put(data, key, value):
+    idx = key.find(".")
+    if idx < 0:
+        data[key] = value
+        return
+    key2 = key[0:idx]
+    if not key2 in data:
+        data[key2] = {}
+    dictlib_put(data[key2], key[idx+1:], value)
+
+def pickupAndCompareForUpdate(src_data, curr_data, keys):
+    src_data2 = {}
+    curr_data2 = {}
+    for key in keys:
+        if key in src_data:
+            src_data2[key] = src_data[key]
+        if key in curr_data:
+            curr_data2[key] = curr_data[key]
+    if src_data2 == curr_data2:
+        return None
+    return src_data2
+

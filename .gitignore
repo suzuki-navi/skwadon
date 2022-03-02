@@ -5,3 +5,6 @@ __pycache__/
 
 Pipfile*
 /build/
+
+# testコードはまだ書きかけ
+/test/
