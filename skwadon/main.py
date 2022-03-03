@@ -347,8 +347,11 @@ def output_completion(result):
                 msg = help_message[name]
             else:
                 msg = ""
-            padding = " " * (max_len - len(name))
-            print(f"{name}{padding} : {msg}")
+            if len(msg) > 0:
+                padding = " " * (max_len - len(name))
+                print(f"{name}{padding} : {msg}")
+            else:
+                print(f"{name}")
     elif isinstance(result, list):
         is_str_list = True
         for elem in result:
@@ -360,35 +363,36 @@ def output_completion(result):
                 print(name)
 
 def output_simple(result):
-    if result == None:
-        pass
-    elif isinstance(result, dict):
-        is_simple = True
-        for name, value in result.items():
-            if value != {}:
-                is_simple = False
-        if is_simple:
-            for name, value in result.items():
-                print(name)
-        else:
-            save_yaml(result, None)
-    elif isinstance(result, list):
-        is_str_list = True
-        for elem in result:
-            if not isinstance(elem, str):
-                is_str_list = False
-                break
-        if is_str_list:
-            for name in result:
-                print(name)
-        else:
-            save_yaml(result, None)
-    elif isinstance(result, str):
-        print(result)
-    elif isinstance(result, int):
-        print(result)
-    else:
-        save_yaml(result, None)
+    save_yaml(result, None)
+    #if result == None:
+    #    pass
+    #elif isinstance(result, dict):
+    #    is_simple = True
+    #    for name, value in result.items():
+    #        if value != {}:
+    #            is_simple = False
+    #    if is_simple:
+    #        for name, value in result.items():
+    #            print(name)
+    #    else:
+    #        save_yaml(result, None)
+    #elif isinstance(result, list):
+    #    is_str_list = True
+    #    for elem in result:
+    #        if not isinstance(elem, str):
+    #            is_str_list = False
+    #            break
+    #    if is_str_list:
+    #        for name in result:
+    #            print(name)
+    #    else:
+    #        save_yaml(result, None)
+    #elif isinstance(result, str):
+    #    print(result)
+    #elif isinstance(result, int):
+    #    print(result)
+    #else:
+    #    save_yaml(result, None)
 
 def output_simple_diff(result1, result2):
     if result1 == {} and (isinstance(result2, str) or isinstance(result2, int)):

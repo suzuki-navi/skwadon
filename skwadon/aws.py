@@ -8,6 +8,7 @@ import botocore.exceptions
 import skwadon.main as sic_main
 import skwadon.common_action as common_action
 import skwadon.aws_iam              as aws_iam
+import skwadon.aws_stepfunctions    as aws_stepfunctions
 import skwadon.aws_glue_datacatalog as aws_glue_datacatalog
 import skwadon.aws_glue_crawler     as aws_glue_crawler
 import skwadon.aws_glue_job         as aws_glue_job
@@ -31,6 +32,7 @@ def do_action(action, is_dryrun, path, src_data):
     handler_map = {}
     modules = [
         aws_iam,
+        aws_stepfunctions,
         aws_glue_datacatalog,
         aws_glue_crawler,
         aws_glue_job,
@@ -56,6 +58,16 @@ def create_aws_session(data):
         region = None
     session = boto3.session.Session(profile_name = profile, region_name = region)
     return session
+
+def fetch_account_id(session):
+    account_id = session.client("sts").get_caller_identity()["Account"]
+    return account_id
+
+def fetch_region_name(session):
+    region_name = session.region_name
+    if region_name == None:
+        raise Exception()
+    return region_name
 
 def fetch_s3_object(session, s3_path: str):
     if s3_path == None:

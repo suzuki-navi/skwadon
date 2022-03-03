@@ -97,6 +97,18 @@ def pickup(src_data, keys):
             dictlib_put(src_data2, key, dictlib_get(src_data, key))
     return src_data2
 
+def pickupAndCompareForUpdate(src_data, curr_data, keys):
+    src_data2 = {}
+    curr_data2 = {}
+    for key in keys:
+        if dictlib_in(src_data, key):
+            dictlib_put(src_data2, key, dictlib_get(src_data, key))
+        if dictlib_in(curr_data, key):
+            dictlib_put(curr_data2, key, dictlib_get(curr_data, key))
+    if src_data2 == curr_data2:
+        return None
+    return src_data2
+
 def dictlib_in(data, key):
     idx = key.find(".")
     if idx < 0:
@@ -131,15 +143,16 @@ def dictlib_put(data, key, value):
         data[key2] = {}
     dictlib_put(data[key2], key[idx+1:], value)
 
-def pickupAndCompareForUpdate(src_data, curr_data, keys):
-    src_data2 = {}
-    curr_data2 = {}
-    for key in keys:
-        if key in src_data:
-            src_data2[key] = src_data[key]
-        if key in curr_data:
-            curr_data2[key] = curr_data[key]
-    if src_data2 == curr_data2:
-        return None
-    return src_data2
+def dict_key_to_lower(info):
+    ret = {}
+    for key, value in info.items():
+        key2 = key[0:1].lower() + key[1:]
+        ret[key2] = value
+    return ret
 
+def dict_key_capitalize(info):
+    ret = {}
+    for key, value in info.items():
+        key2 = key[0:1].title() + key[1:]
+        ret[key2] = value
+    return ret
