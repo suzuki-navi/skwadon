@@ -7,11 +7,11 @@ import skwadon.aws as sic_aws
 import skwadon.lib as sic_lib
 
 def main():
-    (help_flag, action, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = parse_args()
-    (help_flag, action, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = check_args \
-        (help_flag, action, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = parse_args()
+    (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = check_args \
+        (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
     exec_main \
-        (help_flag, action, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+        (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
 # putアクションで --dry-run が指定されていなく、更新処理を実行することを示すフラグ
 # バグにより意図せず更新処理してしまうのが怖いので、引き回しせずにグローバルで持つことにする
@@ -24,6 +24,7 @@ global_confirmation_flag = False
 def parse_args():
     help_flag = False
     action = None # get, put, delete exec
+    is_simple = None
     is_full = None
     is_diff = None
     is_completion = None
@@ -42,6 +43,8 @@ def parse_args():
         i = i + 1
         if a == "--help":
             help_flag = True
+        elif a == "-r":
+            is_simple = True
         elif a == "--full":
             is_full = True
         elif a == "--diff":
@@ -95,13 +98,13 @@ def parse_args():
             src_file = a
         else:
             raise Exception(f"Unknown parameter: {a}")
-    return (help_flag, action, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    return (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
 ####################################################################################################
 # パラメータの組み合わせチェック
 ####################################################################################################
 
-def check_args(help_flag, action, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
+def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
     if path != None and type == None:
         raise Exception("-p option needs aws parameter")
 
@@ -109,6 +112,7 @@ def check_args(help_flag, action, is_full, is_diff, is_completion, type, profile
     if path != None and path.endswith("."):
         path = path[0:len(path) - 1]
         action = "get"
+        is_simple = False
         is_full = False
         is_diff = False
         is_completion = True
@@ -164,6 +168,7 @@ def check_args(help_flag, action, is_full, is_diff, is_completion, type, profile
 
     # ファイルでの入力の場合の出力は is_full のみ
     if type == None:
+        is_simple = False
         is_full = True
 
     if is_inplace:
@@ -180,13 +185,13 @@ def check_args(help_flag, action, is_full, is_diff, is_completion, type, profile
         else:
             path = path.split(".")
 
-    return (help_flag, action, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    return (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
 ####################################################################################################
 # 実行
 ####################################################################################################
 
-def exec_main(help_flag, action, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
+def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
     global global_confirmation_flag
     confirmation_flag = False
 
@@ -237,20 +242,30 @@ def exec_main(help_flag, action, is_full, is_diff, is_completion, type, profile,
                 save_yaml(data1, src_file)
             else:
                 save_yaml(data1, None)
-        else:
+        elif is_simple:
             if is_diff:
                 output_simple_diff(get_by_path(r1, path), get_by_path(r2, path))
             else:
                 output_simple(get_by_path(data1, path))
+        else:
+            if is_diff:
+                diff_yaml(get_by_path(r1, path), get_by_path(r2, path))
+            else:
+                save_yaml(get_by_path(data1, path), None)
     elif action == "put":
         if is_full:
             if is_diff:
                 diff_yaml(r1, r2)
             else:
                 pass
-        else:
+        elif is_simple:
             if is_diff:
                 output_simple_diff(get_by_path(r1, path), get_by_path(r2, path))
+            else:
+                pass
+        else:
+            if is_diff:
+                diff_yaml(get_by_path(r1, path), get_by_path(r2, path))
             else:
                 pass
 
@@ -363,36 +378,35 @@ def output_completion(result):
                 print(name)
 
 def output_simple(result):
-    save_yaml(result, None)
-    #if result == None:
-    #    pass
-    #elif isinstance(result, dict):
-    #    is_simple = True
-    #    for name, value in result.items():
-    #        if value != {}:
-    #            is_simple = False
-    #    if is_simple:
-    #        for name, value in result.items():
-    #            print(name)
-    #    else:
-    #        save_yaml(result, None)
-    #elif isinstance(result, list):
-    #    is_str_list = True
-    #    for elem in result:
-    #        if not isinstance(elem, str):
-    #            is_str_list = False
-    #            break
-    #    if is_str_list:
-    #        for name in result:
-    #            print(name)
-    #    else:
-    #        save_yaml(result, None)
-    #elif isinstance(result, str):
-    #    print(result)
-    #elif isinstance(result, int):
-    #    print(result)
-    #else:
-    #    save_yaml(result, None)
+    if result == None:
+        pass
+    elif isinstance(result, dict):
+        is_simple = True
+        for name, value in result.items():
+            if value != {}:
+                is_simple = False
+        if is_simple:
+            for name, value in result.items():
+                print(name)
+        else:
+            save_yaml(result, None)
+    elif isinstance(result, list):
+        is_str_list = True
+        for elem in result:
+            if not isinstance(elem, str):
+                is_str_list = False
+                break
+        if is_str_list:
+            for name in result:
+                print(name)
+        else:
+            save_yaml(result, None)
+    elif isinstance(result, str):
+        print(result)
+    elif isinstance(result, int):
+        print(result)
+    else:
+        save_yaml(result, None)
 
 def output_simple_diff(result1, result2):
     if result1 == {} and (isinstance(result2, str) or isinstance(result2, int)):

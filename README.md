@@ -14,7 +14,7 @@ IAM RoleのAssume Role Policyを取得する例
 
 ## Usage
 
-    $ skwadon [get] [--full] [--diff] [--repeat N] [aws [--profile AWS_PROFILE] [[-p] PATH]] [[-i] [-s] SRC_FILE] [< SRC_FILE]
+    $ skwadon [get] [-r] [--full] [--diff] [--repeat N] [aws [--profile AWS_PROFILE] [[-p] PATH]] [[-i] [-s] SRC_FILE] [< SRC_FILE]
     $ skwadon put [--dry-run] [aws [--profile AWS_PROFILE] [[-p] PATH] [[-s] SRC_FILE]] [< SRC_FILE]
 
 ## 対応サービス
