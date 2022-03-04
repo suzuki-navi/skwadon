@@ -79,9 +79,12 @@ def parse_args():
             is_dryrun = True
         elif a == "--confirm":
             if i >= argCount:
-                raise Exception(f"Option parameter not found: {a}")
-            confirm = sys.argv[i]
-            i = i + 1
+                # エラーだけど
+                # check_confirm で親切なエラーを出すためここではエラー扱いにしない
+                confirm = ""
+            else:
+                confirm = sys.argv[i]
+                i = i + 1
         elif a.startswith("-"):
             raise Exception(f"Unknown option: {a}")
         elif action == None and a == "get":
@@ -199,7 +202,8 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
         if not is_dryrun:
             # putコマンドでは --confirm オプションをチェック
             if confirm == None:
-                raise Exception("put action needs --dry-run or --confirm HHMM")
+                hm = get_correct_confirm_parameter()
+                raise Exception(f"put action needs --dry-run or --confirm {hm}")
             if confirm != True:
                 check_confirm(confirm)
             confirmation_flag = True
@@ -279,9 +283,13 @@ def check_confirm(confirm):
         hm = time_str[11:13] + time_str[14:16]
         if hm == confirm:
             return True
-    time_str = now.isoformat()
-    hm = time_str[11:13] + time_str[14:16]
+    hm = get_correct_confirm_parameter()
     raise Exception(f"put action needs --confirm {hm}")
+
+def get_correct_confirm_parameter():
+    now = datetime.datetime.now(datetime.timezone.utc)
+    time_str = now.isoformat()
+    return time_str[11:13] + time_str[14:16]
 
 # -p オプションからデータ作成
 def build_path_data_full(type, profile, path, data_put):
