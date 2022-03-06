@@ -2,7 +2,19 @@
 
 AWSのリソースの情報をYAMLで取得し、また設定できるツール。
 
-IAM RoleのAssume Role Policyを取得する例
+    $ skwadon aws iam.roles
+    AWSBackupDefaultServiceRole: {}
+    AWSServiceRoleForAPIGateway: {}
+    AWSServiceRoleForAWSCloud9: {}
+    AWSServiceRoleForAmazonElasticsearchService: {}
+    AWSServiceRoleForAmazonGuardDuty: {}
+    ......
+
+    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway
+    conf: {}
+    inlinePolicies: {}
+    attachedPolicies: {}
+    assumeRolePolicy: {}
 
     $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy
     Version: '2012-10-17'
