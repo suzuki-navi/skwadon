@@ -7,12 +7,12 @@ import botocore.exceptions
 
 import skwadon.main as sic_main
 import skwadon.common_action as common_action
-import skwadon.aws_iam              as aws_iam
+import skwadon.aws_iam_role         as aws_iam_role
 import skwadon.aws_stepfunctions    as aws_stepfunctions
 import skwadon.aws_glue_datacatalog as aws_glue_datacatalog
 import skwadon.aws_glue_crawler     as aws_glue_crawler
 import skwadon.aws_glue_job         as aws_glue_job
-import skwadon.aws_redshift         as aws_redshift
+#import skwadon.aws_redshift         as aws_redshift
 
 def get_message_prefix(data):
     if "profile" in data:
@@ -26,26 +26,15 @@ def get_message_prefix(data):
     ret = ret + ")"
     return ret
 
-def do_action(action, is_dryrun, path, src_data):
+def get_handler(src_data):
     session = create_aws_session(src_data)
-
-    handler_map = {}
-    modules = [
-        aws_iam,
-        aws_stepfunctions,
-        aws_glue_datacatalog,
-        aws_glue_crawler,
-        aws_glue_job,
-        aws_redshift,
-    ]
-    for m in modules:
-        m.set_handler(handler_map, session)
-
-    result = copy.copy(src_data)
-    if "resources" in src_data:
-        result["resources"] = common_action.do_action(handler_map, action, is_dryrun, path, src_data["resources"])
-
-    return result
+    return common_action.NamespaceHandler({
+        "iam.roles": aws_iam_role.RoleListHandler(session),
+        "stepFunctions.stateMachines": aws_stepfunctions.StateMachineListHandler(session),
+        "glue.crawlers": aws_glue_crawler.CrawlerListHandler(session),
+        "glue.databases": aws_glue_datacatalog.DatabaseListHandler(session),
+        "glue.jobs": aws_glue_job.JobListHandler(session),
+    })
 
 def create_aws_session(data):
     if "profile" in data:
@@ -71,7 +60,7 @@ def fetch_region_name(session):
 
 def fetch_s3_object(session, s3_path: str):
     if s3_path == None:
-        return ""
+        return None
     s3_client = session.client("s3")
     m = re.compile("\As3://([^/]+)/(.*)\Z").search(s3_path)
     if not m:
@@ -89,7 +78,7 @@ def fetch_s3_object(session, s3_path: str):
         else:
             raise
 
-def put_s3_object(session, s3_path: str, body: str, confirmation_flag):
+def put_s3_object(confirmation_flag, session, s3_path: str, body: str):
     if s3_path == None:
         return
     s3_client = session.client("s3")
@@ -100,4 +89,4 @@ def put_s3_object(session, s3_path: str, body: str, confirmation_flag):
     s3_key = m.group(2)
     sic_main.add_update_message(f"s3_client.put_object(Bucket = {s3_bucket}, Key = {s3_key}, ...)")
     if confirmation_flag and sic_main.global_confirmation_flag:
-        res = s3_client.put_object(Bucket = s3_bucket, Key = s3_key, Body = body.encode('utf-8'))
+        s3_client.put_object(Bucket = s3_bucket, Key = s3_key, Body = body.encode('utf-8'))

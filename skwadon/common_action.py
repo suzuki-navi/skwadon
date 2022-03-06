@@ -1,223 +1,335 @@
+from abc import abstractmethod
 import copy
 import re
+from termios import TIOCPKT_DOSTOP
 
+import skwadon.main as sic_main
 import skwadon.lib as sic_lib
 
-####################################################################################################
+class Handler:
+    # abstract
+    def do_get(self, src_data):
+        return {}
 
-#def null_lister(names):
-#    return []
-#
-#def null_describer(names):
-#    return {}
-#
-#def null_creator(src_data, confirmation_flag, names):
-#    return None
-#
-#def null_updator(src_data, curr_data, confirmation_flag, names):
-#    return curr_data
-#
-#def null_deleter(confirmation_flag, names):
-#    return curr_data
+    # abstract
+    # 返り値は dryrunでは (入力, 変更前のクラウド)
+    # 非dryrunでは (変更後のクラウド, 変更前のクラウド)
+    def do_put(self, confirmation_flag, src_data):
+        return ({}, {})
 
-def set_handler(handler_map, path, *,
-    lister = None,
-    describer = None,
-    creator = None,
-    updator = None,
-    deleter = None):
-    def sub(handler_map, path):
-        head = path[0]
-        if head.startswith("*"):
-            if not "lister" in handler_map:
-                raise Exception()
-            if not "wildcard" in handler_map:
-                handler_map["wildcard"] = head[1:]
-                handler_map["children"] = {}
-            children = handler_map["children"]
-        else:
-            if "lister" in handler_map:
-                raise Exception()
-            key = "#" + head
-            if not key in handler_map:
-                handler_map[key] = {}
-            children = handler_map[key]
-        if len(path) == 1:
-            if lister != None:
-                children["lister"] = lister
-            else:
-                if describer != None:
-                    children["describer"] = describer
-                if creator != None:
-                    children["creator"] = creator
-                if updator != None:
-                    children["updator"] = updator
-                if deleter != None:
-                    children["deleter"] = deleter
-        else:
-            sub(children, path[1:])
-    path = path.split(".")
-    sub(handler_map, path)
+    # abstract
+    # 返り値は dryrunでは 入力
+    # 非dryrunでは 変更後のクラウド
+    def do_create(self, confirmation_flag, src_data):
+        return ({}, {})
 
-####################################################################################################
+    # abstract
+    # 返り値は (変更後のクラウド, 変更前のクラウド)
+    def do_delete(self, confirmation_flag):
+        return ({}, {})
 
-def do_action(handler_map, action, confirmation_flag, path, src_data):
-    if path == None:
-        path2 = []
-    else:
-        path2 = path
-    if action == "get":
-        return do_get(handler_map, {}, src_data)
-    elif action == "put":
-        return do_put(confirmation_flag, handler_map, {}, path2, src_data)
-
-####################################################################################################
-
-def do_get(handler_map, names, src_data):
-    if "lister" in handler_map:
-        items = handler_map["lister"](names)
+# abstract
+class ListHandler(Handler):
+    def do_get(self, src_data):
+        items = self._list()
         if not isinstance(src_data, dict) or len(src_data) == 0:
             result = {}
-            for elem in items:
-                result[elem] = {}
-        else:
-            result = {}
-            if "wildcard" in handler_map:
-                key = handler_map["wildcard"]
-                for name, src_data2 in src_data.items():
-                    if name in items:
-                        names2 = copy.copy(names)
-                        names2[key] = name
-                        result[name] = do_get(handler_map["children"], names2, src_data2)
-                    else:
-                        result[name] = None
+            if len(items) == 0:
+                result["*"] = None
             else:
-                for name, src_data2 in src_data.items():
-                    if name in items:
-                        result[name] = {}
-                    else:
-                        result[name] = None
-    elif "describer" in handler_map:
-        result = handler_map["describer"](names)
-    else:
-        if not isinstance(src_data, dict) or len(src_data) == 0:
-            result = {}
-            for key in handler_map:
-                if key.startswith("#"):
-                    name = key[1:]
-                    result[name] = {}
+                for elem in items:
+                    result[elem] = {}
         else:
             result = {}
             for name, src_data2 in src_data.items():
-                key = "#" + name
-                if key in handler_map:
-                    result[name] = do_get(handler_map[key], names, src_data2)
-    return result
+                if name == "*":
+                    for name in items:
+                        if not name in src_data:
+                            result[name] = {}
+                elif name in items:
+                    result[name] = self.child_handler(name).do_get(src_data2)
+                else:
+                    result[name] = None
+        return result
 
-# path は大きさ0以上の配列
-def do_put(confirmation_flag, handler_map, names, path, src_data):
-    if "lister" in handler_map:
+    def do_put(self, confirmation_flag, src_data):
+        if src_data == None:
+            return self.do_delete(confirmation_flag)
         if not isinstance(src_data, dict) or len(src_data) == 0:
-            result = {}
-        else:
-            result = {}
-            items = handler_map["lister"](names)
-            if "wildcard" in handler_map:
-                key = handler_map["wildcard"]
-                for name, src_data2 in src_data.items():
-                    names2 = copy.copy(names)
-                    names2[key] = name
-                    path2 = []
-                    if len(path) > 1 and path[0] == name:
-                        path2 = path[1:]
-                    if name in items:
-                        if src_data2 == None:
-                            result[name] = do_delete(confirmation_flag, handler_map["children"], names2)
-                        else:
-                            result[name] = do_put(confirmation_flag, handler_map["children"], names2, path2, src_data2)
-                    else:
-                        if src_data2 == None:
-                            result[name] = None
-                        elif len(path2) == 0:
-                            do_create(confirmation_flag, handler_map["children"], names2, src_data2)
-                            result[name] = None
-                        else:
-                            # この場合は情報が足りなくて作成できない
-                            result[name] = None
-            else:
-                for name in items:
-                    result[name] = {}
-    elif "describer" in handler_map:
-        result = handler_map["describer"](names)
-        if "updator" in handler_map:
-            if len(path) == 0:
-                if src_data != result:
-                    handler_map["updator"](src_data, result, confirmation_flag, names)
-            else:
-                result2 = sic_lib.intersect_dict(result, src_data)
-                src_data2 = sic_lib.update_dict(result, src_data)
-                if src_data2 != result2:
-                    handler_map["updator"](src_data2, result2, confirmation_flag, names)
-                result = result2
-    else:
-        if not isinstance(src_data, dict) or len(src_data) == 0:
-            result = {}
-        else:
-            result = {}
-            for name, src_data2 in src_data.items():
-                key = "#" + name
-                path2 = []
-                if len(path) > 1 and path[0] == name:
-                    path2 = path[1:]
-                if key in handler_map:
-                    result[name] = do_put(confirmation_flag, handler_map[key], names, path2, src_data2)
-    return result
-
-def do_create(confirmation_flag, handler_map, names, src_data):
-    if "lister" in handler_map:
-        if "wildcard" in handler_map:
-            key = handler_map["wildcard"]
-            for name, src_data2 in src_data.items():
-                names2 = copy.copy(names)
-                names2[key] = name
-                do_create(confirmation_flag, handler_map["children"], names2, src_data2)
-    elif "describer" in handler_map:
-        if "creator" in handler_map:
-            handler_map["creator"](src_data, confirmation_flag, names)
-    else:
-        for key in handler_map:
-            if key.startswith("#"):
-                name = key[1:]
-                if name in src_data:
-                    do_create(confirmation_flag, handler_map[key], names, src_data[name])
-
-def do_delete(confirmation_flag, handler_map, names):
-    if "lister" in handler_map:
-        result = {}
-        items = handler_map["lister"](names)
-        if "wildcard" in handler_map:
-            key = handler_map["wildcard"]
-            for name in items:
-                names2 = copy.copy(names)
-                names2[key] = name
-                result[name] = do_delete(confirmation_flag, handler_map["children"], names2)
-        else:
-            for name in items:
-                result[name] = {}
-    elif "describer" in handler_map:
-        result = handler_map["describer"](names)
-        if "deleter" in handler_map:
-            handler_map["deleter"](confirmation_flag, names)
-    else:
-        result = {}
-        for key, h in reversed(handler_map.items()):
-            if key.startswith("#"):
-                name = key[1:]
-                result[name] = do_delete(confirmation_flag, handler_map[key], names)
+            return ({}, {})
+        items = self._list()
+        result1 = {}
         result2 = {}
-        for k, v in reversed(result.items()):
-            result2[k] = v
-        result = result2
-    return result
+        delete_flag = False
+        for name in src_data:
+            if name == "*":
+                if src_data[name] == None:
+                    delete_flag = True
+                continue
+            if name in items:
+                d1, d2 = self.child_handler(name).do_put(confirmation_flag, src_data[name])
+                result1[name] = d1
+                result2[name] = d2
+            elif src_data[name] == None:
+                result1[name] = None
+                result2[name] = None
+            else:
+                d1 = self.child_handler(name).do_create(confirmation_flag, src_data[name])
+                result1[name] = d1
+                result2[name] = None
+        if delete_flag:
+            for name in items:
+                if not name in src_data:
+                    d1, d2 = self.child_handler(name).do_delete(confirmation_flag)
+                    result1[name] = d1
+                    result2[name] = d2
+        if confirmation_flag:
+            items2 = self._list()
+            for name in items:
+                if name in result1:
+                    if not name in items2:
+                        result1[name] = None
+        else:
+            for name in items:
+                if name in result1:
+                    if delete_flag and not name in src_data:
+                        result1[name] = None
+                    elif name in src_data and src_data[name] == None:
+                        result1[name] = None
+        return (result1, result2)
 
-####################################################################################################
+    def do_create(self, confirmation_flag, src_data):
+        result = {}
+        for name in src_data:
+            result[name] = self.child_handler(name).do_create(confirmation_flag, src_data[name])
+        if confirmation_flag:
+            items = self._list()
+            for name in result:
+                if not name in items:
+                    result[name] = None
+        return result
+
+    def do_delete(self, confirmation_flag):
+        items = self._list()
+        result1 = {}
+        result2 = {}
+        for name in items:
+            d1, d2 = self.child_handler(name).do_delete(confirmation_flag)
+            result1[name] = d1
+            result2[name] = d2
+        if confirmation_flag:
+            items = self._list()
+            for name in result1:
+                if not name in items:
+                    result1[name] = None
+        else:
+            for name in result1:
+                result1[name] = None
+        return (result1, result2)
+
+    def _list(self):
+        return self.sort_items(self.list())
+
+    @abstractmethod
+    def list(self):
+        raise Exception(f"list method not implemented: {self}")
+
+    # abstract
+    def child_handler(self, name):
+        return Handler()
+
+    def sort_items(self, list):
+        return sorted(list)
+
+# abstract
+class ResourceHandler(Handler):
+    def do_get(self, src_data):
+        curr_data = self.describe()
+        def build_result_data(src_data, curr_data):
+            if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
+                return curr_data
+            if len(src_data) == 0:
+                return curr_data
+            result = {}
+            for name in src_data:
+                if name == "*":
+                    for name in curr_data:
+                        if not name in src_data:
+                            result[name] = {}
+                elif name in curr_data:
+                    result[name] = build_result_data(src_data[name], curr_data[name])
+                else:
+                    result[name] = None
+            return result
+        return build_result_data(src_data, curr_data)
+
+    def do_put(self, confirmation_flag, src_data):
+        if src_data == None:
+            return self.do_delete(confirmation_flag)
+        if src_data == {}:
+            return ({}, {})
+        curr_data = self._encode_data(self.describe())
+        def build_update_data(src_data, curr_data):
+            if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
+                return (src_data, curr_data)
+            if len(src_data) == 0:
+                return ({}, {})
+            src_data2 = {}
+            curr_data2 = {}
+            delete_flag = False
+            for name in src_data:
+                if name == "*":
+                    if src_data[name] == None:
+                        delete_flag = True
+                    continue
+                if name in curr_data:
+                    src_data2[name], curr_data2[name] = build_update_data(src_data[name], curr_data[name])
+                else:
+                    src_data2[name] = src_data[name]
+            if not delete_flag:
+                for name in curr_data:
+                    if not name in src_data2:
+                        src_data2[name] = curr_data[name]
+            return (src_data2, curr_data2)
+        src_data2, curr_data2 = build_update_data(src_data, curr_data)
+        if src_data2 == curr_data:
+            return (src_data, curr_data2)
+        self.update(confirmation_flag, self._decode_data(src_data2), curr_data)
+        if confirmation_flag:
+            _, curr_data3 = build_update_data(src_data, self._encode_data(self.describe()))
+            return (curr_data3, curr_data2)
+        else:
+            return (src_data, curr_data2)
+
+    def do_create(self, confirmation_flag, src_data):
+        self.create(confirmation_flag, self._decode_data(src_data))
+        if not confirmation_flag:
+            return src_data
+        new_data = self._encode_data(self.describe())
+        return new_data
+
+    def do_delete(self, confirmation_flag):
+        curr_data = self._encode_data(self.describe())
+        result1 = {}
+        result2 = curr_data
+        self.delete(confirmation_flag, curr_data)
+        return (result1, result2)
+
+    def _decode_data(self, src_data):
+        if not isinstance(src_data, dict):
+            return src_data
+        src_data2 = {}
+        for name in src_data:
+            if name == "*":
+                continue
+            src_data2[name] = self._decode_data(src_data[name])
+        return src_data2
+
+    def _encode_data(self, src_data):
+        if not isinstance(src_data, dict):
+            return src_data
+        if len(src_data) == 0:
+            return {"*": None}
+        src_data2 = {}
+        for name in src_data:
+            src_data2[name] = self._encode_data(src_data[name])
+        return src_data2
+
+    @abstractmethod
+    def describe(self):
+        raise Exception(f"describe method not implemented: {self}")
+
+    @abstractmethod
+    def create(self, confirmation_flag, src_data):
+        self.put(confirmation_flag, src_data)
+
+    @abstractmethod
+    def update(self, confirmation_flag, src_data, curr_data):
+        self.put(confirmation_flag, src_data)
+
+    @abstractmethod
+    def put(self, confirmation_flag, src_data):
+        raise Exception(f"put method not implemented: {self}")
+
+    @abstractmethod
+    def delete(self, confirmation_flag, curr_data):
+        raise Exception(f"delete method not implemented: {self}")
+
+class NamespaceHandler(Handler):
+    def __init__(self, path_map):
+        handler_map = {}
+        for path, handler in path_map.items():
+            p = path.find(".")
+            if p < 0:
+                h = path
+                t = ""
+            else:
+                h = path[0:p]
+                t = path[p+1:]
+            if not h in handler_map:
+                handler_map[h] = {}
+            handler_map[h][t] = handler
+        self.handler_map = {}
+        for key, map in handler_map.items():
+            if "" in map:
+                self.handler_map[key] = map[""]
+            else:
+                self.handler_map[key] = NamespaceHandler(map)
+
+    def do_get(self, src_data):
+        if not isinstance(src_data, dict) or len(src_data) == 0:
+            result = {}
+            for name in self.handler_map:
+                result[name] = {}
+        else:
+            result = {}
+            for name in src_data:
+                if name == "*":
+                    for name in self.handler_map:
+                        if not name in src_data:
+                            result[name] = {}
+                elif name in self.handler_map:
+                    result[name] = self.handler_map[name].do_get(src_data[name])
+                else:
+                    result[name] = None
+        return result
+
+    def do_put(self, confirmation_flag, src_data):
+        if src_data == None:
+            return self.do_delete(confirmation_flag)
+        if not isinstance(src_data, dict):
+            result1 = {}
+            result2 = {}
+        else:
+            result1 = {}
+            result2 = {}
+            for name in src_data:
+                if name in self.handler_map:
+                    d1, d2 = self.handler_map[name].do_put(confirmation_flag, src_data[name])
+                    result1[name] = d1
+                    result2[name] = d2
+        return (result1, result2)
+
+    def do_create(self, confirmation_flag, src_data):
+        if not isinstance(src_data, dict):
+            result = {}
+        else:
+            result = {}
+            for name in src_data:
+                if name in self.handler_map:
+                    result[name] = self.handler_map[name].do_create(confirmation_flag, src_data[name])
+        return result
+
+    def do_delete(self, confirmation_flag):
+        result1 = {}
+        result2 = {}
+        for name in reversed(self.handler_map.keys()):
+            d1, d2 = self.handler_map[name].do_delete(confirmation_flag)
+            result1[name] = d1
+            result2[name] = d2
+        result1r = {}
+        result2r = {}
+        for name in self.handler_map.keys():
+            result1r[name] = result1[name]
+            result2r[name] = result2[name]
+        return (result1r, result2r)

@@ -1,3 +1,4 @@
+import copy
 import datetime
 from re import S
 import sys
@@ -224,17 +225,16 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
     if action == "delete":
         action = "put"
 
-    data1 = do_actions(action, confirmation_flag, path, data0, repeat_count)
-
-    if action == "put" and not is_dryrun:
-        add_update_completion_message()
-
     if action == "get":
+        data1 = do_get_n(data0, repeat_count)
         r1 = data0 # src
         r2 = data1 # クラウド側
     elif action == "put":
+        data0, data1 = do_put_n(confirmation_flag, data0)
         r1 = data1 # 更新前のクラウド側
-        r2 = data0 # src
+        r2 = data0 # srcまたは更新後
+        if confirmation_flag:
+            add_update_completion_message()
 
     if is_completion:
         output_completion(get_by_path(data1, path))
@@ -316,6 +316,8 @@ def get_by_path(data, path):
         else:
             result = data["resources"]
             for elem in path:
+                if result == None:
+                    return None
                 if not elem in result:
                     return None
                 result = result[elem]
@@ -447,28 +449,57 @@ def diff_yaml(src_data, dst_data):
     dst_yaml_str = yaml.dump(dst_data, sort_keys = False, allow_unicode = True, width = 120)
     sic_lib.exec_diff(src_yaml_str, dst_yaml_str, None)
 
-def do_actions(action, confirmation_flag, path, data0, repeat_count):
+def do_get_n(data0, repeat_count):
     data1 = data0
     for i in range(repeat_count):
         if isinstance(data1, list):
             data2 = []
             for elem in data1:
-                r = do_action(action, confirmation_flag, path, elem)
+                r = do_get(elem)
                 data2.append(r)
         else:
-            data2 = do_action(action, confirmation_flag, path, data1)
+            data2 = do_get(data1)
         data1 = data2
     return data1
 
-def do_action(action, confirmation_flag, path, src_data):
+def do_get(src_data):
+    global update_message_prefix
+    if src_data["type"] == "aws":
+        handler = sic_aws.get_handler(src_data)
+        result = copy.copy(src_data)
+        if "resources" in src_data:
+            result["resources"] = handler.do_get(src_data["resources"])
+        return result
+    else:
+        return src_data
+
+def do_put_n(confirmation_flag, data0):
+    if isinstance(data0, list):
+        data1 = []
+        data2 = []
+        for elem in data0:
+            d1, d2 = do_put(confirmation_flag, elem)
+            data1.append(d1)
+            data2.append(d2)
+    else:
+        data1, data2 = do_put(confirmation_flag, data0)
+    return (data1, data2)
+
+def do_put(confirmation_flag, src_data):
     global update_message_prefix
     if src_data["type"] == "aws":
         update_message_prefix = sic_aws.get_message_prefix(src_data)
-        ret = sic_aws.do_action(action, confirmation_flag, path, src_data)
+        handler = sic_aws.get_handler(src_data)
+        data1 = copy.copy(src_data)
+        data2 = copy.copy(src_data)
+        if "resources" in src_data:
+            d1, d2 = handler.do_put(confirmation_flag, src_data["resources"])
+            data1["resources"] = d1
+            data2["resources"] = d2
         update_message_prefix = None
-        return ret
+        return (data1, data2)
     else:
-        return src_data
+        return (src_data, src_data)
 
 update_message_prefix = None
 update_message = []

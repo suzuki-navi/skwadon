@@ -63,32 +63,32 @@ def random_string(length):
     chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     return ''.join([random.choice(chars) for i in range(length)])
 
-def update_dict(data1, data2):
-    if not isinstance(data1, dict):
-        return data2
-    if not isinstance(data2, dict):
-        return data2
-    result = {}
-    for key, value in data1.items():
-        if key in data2:
-            result[key] = update_dict(value, data2[key])
-        else:
-            result[key] = value
-    for key, value in data2.items():
-        if not key in data1:
-            result[key] = value
-    return result
-
-def intersect_dict(data1, data2):
-    if not isinstance(data1, dict):
-        return data1
-    if not isinstance(data2, dict):
-        return data1
-    result = {}
-    for key, value in data1.items():
-        if key in data2:
-            result[key] = intersect_dict(value, data2[key])
-    return result
+#def update_dict(data1, data2):
+#    if not isinstance(data1, dict):
+#        return data2
+#    if not isinstance(data2, dict):
+#        return data2
+#    result = {}
+#    for key, value in data1.items():
+#        if key in data2:
+#            result[key] = update_dict(value, data2[key])
+#        else:
+#            result[key] = value
+#    for key, value in data2.items():
+#        if not key in data1:
+#            result[key] = value
+#    return result
+#
+#def intersect_dict(data1, data2):
+#    if not isinstance(data1, dict):
+#        return data1
+#    if not isinstance(data2, dict):
+#        return data1
+#    result = {}
+#    for key, value in data1.items():
+#        if key in data2:
+#            result[key] = intersect_dict(value, data2[key])
+#    return result
 
 def pickup(src_data, keys):
     src_data2 = {}
