@@ -24,6 +24,11 @@ AWSのリソースの情報をYAMLで取得し、また設定できるツール�
         Service: ops.apigateway.amazonaws.com
       Action: sts:AssumeRole
 
+    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy > policy.yml
+    $ vi policy.yml
+    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy put --diff > policy.yml
+    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy put --confirm 1348 > policy.yml
+
 ## Usage
 
     $ skwadon [get] [-r] [--full] [--diff] [--repeat N] [aws [--profile AWS_PROFILE] [[-p] PATH]] [[-i] [-s] SRC_FILE] [< SRC_FILE]

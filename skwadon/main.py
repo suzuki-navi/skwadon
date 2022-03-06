@@ -7,10 +7,17 @@ import yaml
 import skwadon.aws as sic_aws
 import skwadon.lib as sic_lib
 
+####################################################################################################
+
 def main():
+    # interprete parameters
     (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = parse_args()
+
+    # check parameters
     (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = check_args \
         (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    
+    # execution
     exec_main \
         (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
@@ -19,6 +26,7 @@ def main():
 global_confirmation_flag = False
 
 ####################################################################################################
+# interprete parameters
 # パラメータ解釈
 ####################################################################################################
 
@@ -105,6 +113,7 @@ def parse_args():
     return (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
 ####################################################################################################
+# check parameters
 # パラメータの組み合わせチェック
 ####################################################################################################
 
@@ -192,6 +201,7 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, ty
     return (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
 ####################################################################################################
+# execution
 # 実行
 ####################################################################################################
 
@@ -291,6 +301,8 @@ def get_correct_confirm_parameter():
     time_str = now.isoformat()
     return time_str[11:13] + time_str[14:16]
 
+####################################################################################################
+
 # -p オプションからデータ作成
 def build_path_data_full(type, profile, path, data_put):
     data0 = {
@@ -350,6 +362,8 @@ def load_simple(src_file):
         data_str = sys.stdin.read()
     data = yaml.safe_load(data_str)
     return data
+
+####################################################################################################
 
 def output_completion(result):
     if result == None:
@@ -449,6 +463,8 @@ def diff_yaml(src_data, dst_data):
     dst_yaml_str = yaml.dump(dst_data, sort_keys = False, allow_unicode = True, width = 120)
     sic_lib.exec_diff(src_yaml_str, dst_yaml_str, None)
 
+####################################################################################################
+
 def do_get_n(data0, repeat_count):
     data1 = data0
     for i in range(repeat_count):
@@ -501,6 +517,8 @@ def do_put(confirmation_flag, src_data):
     else:
         return (src_data, src_data)
 
+####################################################################################################
+
 update_message_prefix = None
 update_message = []
 
@@ -527,3 +545,5 @@ help_message = {}
 
 def put_help_message(key, message):
     help_message[key] = message
+
+####################################################################################################
