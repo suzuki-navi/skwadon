@@ -118,7 +118,7 @@ def parse_args():
 ####################################################################################################
 
 def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
-    if path != None and type == None:
+    if len(path) > 0 and type == None:
         raise Exception("-p option needs aws parameter")
 
     # pathが . で終わっている場合はその次に続く文字列候補を出力する
