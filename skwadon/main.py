@@ -39,7 +39,7 @@ def parse_args():
     is_completion = None
     type = None # aws
     profile = None
-    path = None
+    path = []
     src_file = None
     is_inplace = False
     repeat_count = None
@@ -68,7 +68,7 @@ def parse_args():
         elif a == "-p":
             if i >= argCount:
                 raise Exception(f"Option parameter not found: {a}")
-            path = sys.argv[i]
+            path.append(sys.argv[i])
             i = i + 1
         elif a == "-s":
             if i >= argCount:
@@ -104,8 +104,8 @@ def parse_args():
             action = "delete"
         elif a == "aws":
             type = "aws"
-        elif type == "aws" and path == None and src_file == None:
-            path = a
+        elif type == "aws" and src_file == None:
+            path.append(a)
         elif type == None and path == None and src_file == None:
             src_file = a
         else:
@@ -122,8 +122,9 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, ty
         raise Exception("-p option needs aws parameter")
 
     # pathが . で終わっている場合はその次に続く文字列候補を出力する
-    if path != None and path.endswith("."):
-        path = path[0:len(path) - 1]
+    if len(path) > 0 and path[len(path) - 1].endswith("."):
+        last_path = path[len(path) - 1]
+        path = [last_path[0:len(last_path) - 1]]
         action = "get"
         is_simple = False
         is_full = False
@@ -132,6 +133,11 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, ty
         src_file = None
         is_inplace = False
         repeat_count = 1
+
+    # pathが複数ある場合は --full とする
+    if len(path) > 1:
+        is_simple = False
+        is_full = True
 
     # actionの指定がない場合は get とみなす
     if action == None:
@@ -172,7 +178,7 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, ty
             raise Exception(f"delete action needs aws parameter")
         if src_file != None:
             raise Exception(f"delete action must not have -s option")
-        if path == None or path == "":
+        if len(path) == 0:
             raise Exception(f"delete action needs -p option")
 
     # 入力がない場合はエラー
@@ -193,10 +199,15 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, ty
             raise Exception(f"only one of --diff and -i can be specified")
 
     if type != None:
-        if path == None or path == "":
-            path = []
-        else:
-            path = path.split(".")
+        path2 = []
+        for p in path:
+            if p == "":
+                path2.append([])
+            else:
+                if p.endswith("."):
+                    p = p[0:len(p)-1]
+                path2.append(p.split("."))
+        path = path2
 
     return (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
@@ -220,7 +231,7 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
             confirmation_flag = True
             global_confirmation_flag = True
 
-    if path != None:
+    if len(path) > 0:
         # get aws -p ... < data.yml
         # put aws -p ... < data.yml
         # のパターン
@@ -228,6 +239,7 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
             data_put = None # 削除の意味
         else:
             data_put = load_simple(None)
+            # 標準入力がない場合は {} になる
         data0 = build_path_data_full(type, profile, path, data_put)
     else:
         data0 = load_yaml(src_file)
@@ -313,6 +325,26 @@ def build_path_data_full(type, profile, path, data_put):
     return data0
 
 def build_path_data(path, data_put):
+    def merge(d1, d2):
+        if not isinstance(d1, dict) or not isinstance(d2, dict):
+            return d2
+        result = {}
+        for k in d1:
+            if k in d2:
+                result[k] = merge(d1[k], d2[k])
+            else:
+                result[k] = d1[k]
+        for k in d2:
+            if not k in d1:
+                result[k] = d2[k]
+        return result
+    data = {}
+    for p in path:
+        d = build_path_data_one(p, copy.copy(data_put))
+        data = merge(data, d)
+    return data
+
+def build_path_data_one(path, data_put):
     data = data_put
     for elem in reversed(path):
         data1 = {}
@@ -322,6 +354,7 @@ def build_path_data(path, data_put):
 
 # データから -p で指定された場所を抜き出す
 def get_by_path(data, path):
+    path = path[0]
     def sub(data):
         if path == None:
             result = data
@@ -372,6 +405,8 @@ def output_completion(result):
         max_len = 0
         names = []
         for name, value in result.items():
+            if name == "*":
+                continue
             if len(name) > max_len:
                 max_len = len(name)
             names.append(name)
