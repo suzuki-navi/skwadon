@@ -27,7 +27,7 @@ class ClusterListHandler(common_action.ListHandler):
         return common_action.NamespaceHandler({
             "conf": ClusterConfHandler(name, self.clusters[name]),
             "status": ClusterStatusHandler(name, self.clusters[name]),
-            "temporaryCredentials": ClusterTemporaryCredentials(self.redshift_client, name, self.clusters[name]),
+            "connection": ClusterConnectionHandler(self.redshift_client, name, self.clusters[name]),
         })
 
 class ClusterConfHandler(common_action.ResourceHandler):
@@ -106,7 +106,7 @@ class ClusterStatusHandler(common_action.ResourceHandler):
         curr_data = sic_lib.pickup(self.cluster_info, self.properties)
         return curr_data
 
-class ClusterTemporaryCredentials(common_action.ResourceHandler):
+class ClusterConnectionHandler(common_action.ResourceHandler):
 
     def __init__(self, redshift_client, cluster_name, cluster_info):
         self.redshift_client = redshift_client

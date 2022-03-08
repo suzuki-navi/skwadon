@@ -51,6 +51,8 @@ AWSのリソースの情報をYAMLで取得し、また設定できるツール�
             - describe
     - `jobs`
         - describe, create, update
+    - `connections`
+        - describe, create, update
 - `redshift`
     - `clusters`
         - describe

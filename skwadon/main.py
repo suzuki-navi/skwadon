@@ -102,6 +102,8 @@ def parse_args():
             action = "put"
         elif action == None and a == "delete":
             action = "delete"
+        elif action == None and a == "exec":
+            action = "exec"
         elif a == "aws":
             type = "aws"
         elif type == "aws" and src_file == None:
@@ -138,6 +140,14 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, ty
     if len(path) > 1:
         is_simple = False
         is_full = True
+
+    if action == "put" and len(path) > 1:
+        raise Exception("put action must have only one path")
+
+    if action == "exec" and len(path) > 1:
+        raise Exception("exec action must have only one path")
+    if action == "exec" and len(path) == 0:
+        raise Exception("exec action must have one path")
 
     # actionの指定がない場合は get とみなす
     if action == None:
@@ -237,6 +247,8 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
         # のパターン
         if action == "delete":
             data_put = None # 削除の意味
+        elif action == "exec":
+            data_put = None
         else:
             data_put = load_simple(None)
             # 標準入力がない場合は {} になる
@@ -257,8 +269,12 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
         r2 = data0 # srcまたは更新後
         if confirmation_flag:
             add_update_completion_message()
+    elif action == "exec":
+        do_exec(data0)
 
-    if is_completion:
+    if action == "exec":
+        pass # ここでは出力制御しない
+    elif is_completion:
         output_completion(get_by_path(data1, path))
     elif action == "get":
         if is_full:
@@ -380,7 +396,8 @@ def load_yaml(src_file):
         with open(src_file) as f:
             data = yaml.safe_load(f)
     elif sys.stdin.isatty():
-        raise Exception(f"-s not specified")
+        #raise Exception(f"-s not specified")
+        data = {}
     else:
         data = yaml.safe_load(sys.stdin)
     return data
@@ -551,6 +568,13 @@ def do_put(confirmation_flag, src_data):
         return (data1, data2)
     else:
         return (src_data, src_data)
+
+def do_exec(src_data):
+    if src_data["type"] == "aws":
+        handler = sic_aws.get_handler(src_data)
+        if "resources" in src_data:
+            raise Exception("TODO")
+            #handler.do_exec(src_data["resources"])
 
 ####################################################################################################
 

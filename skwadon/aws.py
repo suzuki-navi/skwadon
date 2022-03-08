@@ -12,6 +12,7 @@ import skwadon.aws_stepfunctions    as aws_stepfunctions
 import skwadon.aws_glue_datacatalog as aws_glue_datacatalog
 import skwadon.aws_glue_crawler     as aws_glue_crawler
 import skwadon.aws_glue_job         as aws_glue_job
+import skwadon.aws_glue_connection  as aws_glue_connection
 import skwadon.aws_redshift         as aws_redshift
 
 def get_message_prefix(data):
@@ -34,6 +35,7 @@ def get_handler(src_data):
         "glue.crawlers": aws_glue_crawler.CrawlerListHandler(session),
         "glue.databases": aws_glue_datacatalog.DatabaseListHandler(session),
         "glue.jobs": aws_glue_job.JobListHandler(session),
+        "glue.connections": aws_glue_connection.ConnectionListHandler(session),
         "redshift.clusters": aws_redshift.ClusterListHandler(session),
     })
 
