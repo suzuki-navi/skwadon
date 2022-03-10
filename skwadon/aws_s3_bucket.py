@@ -21,9 +21,20 @@ class BucketListHandler(common_action.ListHandler):
 
     def child_handler(self, name):
         return common_action.NamespaceHandler({
+            "location": LocationHandler(self.s3_client, name),
             "bucketPolicy": BucketPolicyHandler(self.s3_client, name),
             "publicAccessBlock": PublicAccessBlockHandler(self.s3_client, name),
         })
+
+class LocationHandler(common_action.ResourceHandler):
+    def __init__(self, s3_client, bucket_name):
+        self.s3_client = s3_client
+        self.bucket_name = bucket_name
+
+    def describe(self):
+        res = self.s3_client.get_bucket_location(Bucket = self.bucket_name)
+        curr_data = res["LocationConstraint"]
+        return curr_data
 
 class BucketPolicyHandler(common_action.ResourceHandler):
     def __init__(self, s3_client, bucket_name):
