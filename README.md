@@ -39,6 +39,9 @@ AWSのリソースの情報をYAMLで取得し、また設定できるツール�
 - `iam`
     - `roles`
         - describe, create, update, delete
+- `s3`
+    - `buckets`
+        - describe
 - `stepfunctions`
     - `stateMachines`
         - describe, update

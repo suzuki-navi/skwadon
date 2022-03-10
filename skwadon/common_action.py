@@ -144,7 +144,7 @@ class ListHandler(Handler):
 # abstract
 class ResourceHandler(Handler):
     def do_get(self, src_data):
-        curr_data = self.describe()
+        curr_data = self._encode_data(self.describe())
         def build_result_data(src_data, curr_data):
             if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
                 return curr_data

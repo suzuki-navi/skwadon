@@ -241,7 +241,7 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
             confirmation_flag = True
             global_confirmation_flag = True
 
-    if len(path) > 0:
+    if type != None:
         # get aws -p ... < data.yml
         # put aws -p ... < data.yml
         # のパターン
@@ -370,6 +370,8 @@ def build_path_data_one(path, data_put):
 
 # データから -p で指定された場所を抜き出す
 def get_by_path(data, path):
+    if len(path) != 1:
+        return data
     path = path[0]
     def sub(data):
         if path == None:

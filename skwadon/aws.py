@@ -8,6 +8,7 @@ import botocore.exceptions
 import skwadon.main as sic_main
 import skwadon.common_action as common_action
 import skwadon.aws_iam_role         as aws_iam_role
+import skwadon.aws_s3_bucket        as aws_s3_bucket
 import skwadon.aws_stepfunctions    as aws_stepfunctions
 import skwadon.aws_glue_datacatalog as aws_glue_datacatalog
 import skwadon.aws_glue_crawler     as aws_glue_crawler
@@ -31,6 +32,7 @@ def get_handler(src_data):
     session = create_aws_session(src_data)
     return common_action.NamespaceHandler({
         "iam.roles": aws_iam_role.RoleListHandler(session),
+        "s3.buckets": aws_s3_bucket.BucketListHandler(session),
         "stepFunctions.stateMachines": aws_stepfunctions.StateMachineListHandler(session),
         "glue.crawlers": aws_glue_crawler.CrawlerListHandler(session),
         "glue.databases": aws_glue_datacatalog.DatabaseListHandler(session),
