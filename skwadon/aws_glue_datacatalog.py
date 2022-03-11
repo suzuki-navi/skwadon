@@ -65,12 +65,13 @@ class TableListHandler(common_action.ListHandler):
         return result
 
     def child_handler(self, name):
+        info = TableInfo(self.glue_client, self.database_name, name)
         return common_action.NamespaceHandler({
-            "conf": TableConfHandler(self.glue_client, self.database_name, name),
-            "columns": TableColumnsHandler(self.glue_client, self.database_name, name),
+            "conf": TableConfHandler(info),
+            "columns": TableColumnsHandler(info),
         })
 
-class TableConfHandler(common_action.ResourceHandler):
+class TableInfo:
 
     properties = [
         "Description",
@@ -83,35 +84,98 @@ class TableConfHandler(common_action.ResourceHandler):
         "TableType",
         "Parameters",
         "TargetTable",
-        "VersionId",
     ]
 
     def __init__(self, glue_client, database_name, table_name):
         self.glue_client = glue_client
         self.database_name = database_name
         self.table_name = table_name
+        self.info = None
 
     def describe(self):
-        res = self.glue_client.get_table(DatabaseName = self.database_name, Name = self.table_name)
-        curr_data = sic_lib.pickup(res["Table"], self.properties)
+        if self.info == None:
+            res = self.glue_client.get_table(DatabaseName = self.database_name, Name = self.table_name)
+            self.info = sic_lib.pickup(res["Table"], self.properties)
+        return self.info
+
+    def create(self, confirmation_flag, src_data):
+        update_data = copy.copy(src_data)
+        update_data["Name"] = self.table_name
+        sic_main.add_update_message(f"glue_client.create_table(DatabaseName = {self.database_name}, TableInput = {{Name: {self.table_name}, ...}})")
+        if confirmation_flag and sic_main.global_confirmation_flag:
+            self.glue_client.create_table(DatabaseName = self.database_name,
+                TableInput = update_data)
+
+    def update(self, confirmation_flag, src_data):
+        if src_data == self.describe():
+            return
+        update_data = copy.copy(src_data)
+        update_data["Name"] = self.table_name
+        sic_main.add_update_message(f"glue_client.update_table(DatabaseName = {self.database_name}, TableInput = {{Name: {self.table_name}, ...}})")
+        if confirmation_flag and sic_main.global_confirmation_flag:
+            self.glue_client.update_table(DatabaseName = self.database_name,
+                TableInput = update_data)
+
+class TableConfHandler(common_action.ResourceHandler):
+
+    def __init__(self, info: TableInfo):
+        self.info = info
+
+    def describe(self):
+        info = self.info.describe()
+        curr_data = copy.copy(info)
         curr_data["StorageDescriptor"] = copy.copy(curr_data["StorageDescriptor"])
         sic_lib.removeKey(curr_data["StorageDescriptor"], "Columns")
         return curr_data
 
+    def create(self, confirmation_flag, src_data):
+        update_data = copy.copy(src_data)
+        update_data["StorageDescriptor"]["Columns"] = []
+        self.info.create(confirmation_flag, update_data)
+
+    def update(self, confirmation_flag, src_data, curr_data):
+        info = self.info.describe()
+        update_data = copy.copy(src_data)
+        update_data["StorageDescriptor"] = copy.copy(src_data["StorageDescriptor"])
+        update_data["StorageDescriptor"]["Columns"] = info["StorageDescriptor"]["Columns"]
+        self.info.update(confirmation_flag, update_data)
+
 class TableColumnsHandler(common_action.ResourceHandler):
-    def __init__(self, glue_client, database_name, table_name):
-        self.glue_client = glue_client
-        self.database_name = database_name
-        self.table_name = table_name
+
+    def __init__(self, info: TableInfo):
+        self.info = info
 
     def describe(self):
-        result = []
-        res = self.glue_client.get_table(DatabaseName = self.database_name, Name = self.table_name)
-        curr_data = {}
-        for elem in res["Table"]["StorageDescriptor"]["Columns"]:
+        info = self.info.describe()
+        curr_data = self._decode_columns(info["StorageDescriptor"]["Columns"])
+        return curr_data
+
+    def create(self, confirmation_flag, src_data):
+        if not confirmation_flag:
+            # 新規作成時の --dry-run ではdescribeでエラーになるため処理をスキップ
+            return
+        self.update(confirmation_flag, src_data, None)
+
+    def update(self, confirmation_flag, src_data, curr_data):
+        info = self.info.describe()
+        info = copy.copy(info)
+        info["StorageDescriptor"] = copy.copy(info["StorageDescriptor"])
+        info["StorageDescriptor"]["Columns"] = self._encode_columns(src_data)
+        self.info.update(confirmation_flag, info)
+
+    def _decode_columns(self, info):
+        data = {}
+        for elem in info:
             name = elem["Name"]
             value = copy.copy(elem)
             del value["Name"]
-            curr_data[name] = value
-        return curr_data
+            data[name] = value
+        return data
 
+    def _encode_columns(self, data):
+        info = []
+        for name, value in data.items():
+            elem = copy.copy(value)
+            elem["Name"] = name
+            info.append(elem)
+        return info

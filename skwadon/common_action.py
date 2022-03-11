@@ -190,6 +190,10 @@ class ResourceHandler(Handler):
                 for name in curr_data:
                     if not name in src_data2:
                         src_data2[name] = curr_data[name]
+            if len(src_data2) == 0:
+                src_data2["*"] = None
+            if len(curr_data2) == 0:
+                curr_data2["*"] = None
             return (src_data2, curr_data2)
         src_data2, curr_data2 = build_update_data(src_data, curr_data)
         if src_data2 == curr_data:
