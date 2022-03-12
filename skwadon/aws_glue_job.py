@@ -81,7 +81,7 @@ class JobConfHandler(common_action.ResourceHandler):
 
     def _modify_data_for_put(self, update_data):
         update_data = copy.copy(update_data)
-        if update_data["WorkerType"] == "Standard":
+        if "WorkerType" in update_data and update_data["WorkerType"] == "Standard":
             # MaxCapacity が必須で AllocatedCapacity の指定は不可
             sic_lib.removeKey(update_data, "AllocatedCapacity")
         elif "NumberOfWorkers" in update_data:
