@@ -2,6 +2,8 @@
 
 AWSのリソースの情報をYAMLで取得し、また設定できるツール。
 
+IAM Roleの一覧を見る
+
     $ skwadon aws iam.roles
     AWSBackupDefaultServiceRole: {}
     AWSServiceRoleForAPIGateway: {}
@@ -10,11 +12,15 @@ AWSのリソースの情報をYAMLで取得し、また設定できるツール�
     AWSServiceRoleForAmazonGuardDuty: {}
     ......
 
+IAM Roleについてはこの項目にアクセスできる
+
     $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway
     conf: {}
     inlinePolicies: {}
     attachedPolicies: {}
     assumeRolePolicy: {}
+
+この中でassumeRolePolicyを見る
 
     $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy
     Version: '2012-10-17'
@@ -23,6 +29,8 @@ AWSのリソースの情報をYAMLで取得し、また設定できるツール�
       Principal:
         Service: ops.apigateway.amazonaws.com
       Action: sts:AssumeRole
+
+assumeRolePolicyを編集する
 
     $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy > policy.yml
     $ vi policy.yml
@@ -36,31 +44,52 @@ AWSのリソースの情報をYAMLで取得し、また設定できるツール�
 
 ## 対応サービス
 
-- `iam`
-    - `roles`
-        - describe, create, update, delete
-- `s3`
-    - `buckets`
-        - describe
-- `stepfunctions`
-    - `stateMachines`
-        - describe, update
-- `glue`
-    - `crawlers`
-        - describe, create, update, delete
-    - `databases`
-        - describe
-        - `tables`
-            - describe
-    - `jobs`
-        - describe, create, update
-    - `connections`
-        - describe, create, update
-- `redshift`
-    - `clusters`
-        - describe
+- `iam.roles.*.conf`
+    - describe, create, update, delete
+- `iam.roles.*.inlinePolicies.*`
+    - describe, create, update, delete
+- `iam.roles.*.attachedPolicies`
+    - describe
+- `iam.roles.*.assumeRolePolicy`
+    - describe, create, update, delete
+- `s3.buckets.*.location`
+    - describe
+- `s3.buckets.*.bucketPolicy`
+    - describe
+- `s3.buckets.*.publicAccessBlock`
+    - describe
+- `stepfunctions.stateMachines.*.conf`
+    - describe, update
+- `stepfunctions.stateMachines.*.definition`
+    - describe, update
+- `glue.crawlers.*.conf`
+    - describe, create, update, delete
+- `glue.crawlers.*.status`
+    - describe
+- `glue.databases.*.conf`
+    - describe
+- `glue.databases.*.tables.*.conf`
+    - describe, create, update
+- `glue.databases.*.tables.*.columns`
+    - describe, create, update
+- `glue.jobs.*.conf`
+    - describe, create, update
+- `glue.jobs.*.source`
+    - describe, create, update
+- `glue.jobs.*.bookmark`
+    - describe
+- `glue.connections.*.conf`
+    - describe, create, update
+- `glue.connections.*.connection`
+    - describe
+- `redshift.clusters.*.conf`
+    - describe
+- `redshift.clusters.*.status`
+    - describe
+- `redshift.clusters.*.connection`
+    - describe
 
-まだいろいろ作りかけ。
+まだいろいろ作りかけ。設計途上。
 
 ## Rule of get action
 
