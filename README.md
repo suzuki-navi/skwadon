@@ -52,11 +52,9 @@ assumeRolePolicyを編集する
     - describe
 - `iam.roles.*.assumeRolePolicy`
     - describe, create, update, delete
-- `s3.buckets.*.location`
+- `s3.buckets.*.conf`
     - describe
 - `s3.buckets.*.bucketPolicy`
-    - describe
-- `s3.buckets.*.publicAccessBlock`
     - describe
 - `stepfunctions.stateMachines.*.conf`
     - describe, update
