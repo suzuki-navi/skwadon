@@ -45,22 +45,27 @@ class RoleConfHandler(common_action.ResourceHandler):
         update_data["AssumeRolePolicyDocument"] = json.dumps(self._defaultAssumeRole())
         update_data["Description"] = src_data["Description"]
         update_data["MaxSessionDuration"] = src_data["MaxSessionDuration"]
-        sic_main.add_update_message(f"iam_client.create_role(RoleName = {self.role_name}, ...)")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            self.iam_client.create_role(**update_data)
+        sic_main.exec_put(confirmation_flag,
+            f"iam_client.create_role(RoleName = {self.role_name}, ...)",
+            lambda: self.iam_client.create_role(**update_data)
+        )
 
     def update(self, confirmation_flag, src_data, curr_data):
         update_data = sic_lib.pickupAndCompareForUpdate(src_data, curr_data, ["Description", "MaxSessionDuration"])
         if update_data != None:
             update_data["RoleName"] = self.role_name
-            sic_main.add_update_message(f"iam_client.update_role(RoleName = {self.role_name}, ...)")
-            if confirmation_flag and sic_main.global_confirmation_flag:
-                self.iam_client.update_role(**update_data)
+            sic_main.exec_put(confirmation_flag,
+                f"iam_client.update_role(RoleName = {self.role_name}, ...)",
+                lambda:
+                    self.iam_client.update_role(**update_data)
+            )
 
     def delete(self, confirmation_flag, curr_data):
-        sic_main.add_update_message(f"iam_client.delete_role(RoleName = {self.role_name})")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            self.iam_client.delete_role(RoleName = self.role_name)
+        sic_main.exec_put(confirmation_flag,
+            f"iam_client.delete_role(RoleName = {self.role_name})",
+            lambda:
+                self.iam_client.delete_role(RoleName = self.role_name)
+        )
 
     def _defaultAssumeRole(self):
         return {
@@ -107,15 +112,19 @@ class RoleInlinePolicyHandler(common_action.ResourceHandler):
         return res["PolicyDocument"]
 
     def put(self, confirmation_flag, src_data):
-        sic_main.add_update_message(f"iam_client.put_role_policy(RoleName = {self.role_name}, PolicyName = {self.policy_name}, ...)")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            policy_document_json = json.dumps(src_data)
-            self.iam_client.put_role_policy(RoleName = self.role_name, PolicyName = self.policy_name, PolicyDocument = policy_document_json)
+        policy_document_json = json.dumps(src_data)
+        sic_main.exec_put(confirmation_flag,
+            f"iam_client.put_role_policy(RoleName = {self.role_name}, PolicyName = {self.policy_name}, ...)",
+            lambda:
+                self.iam_client.put_role_policy(RoleName = self.role_name, PolicyName = self.policy_name, PolicyDocument = policy_document_json)
+        )
 
     def delete(self, confirmation_flag, curr_data):
-        sic_main.add_update_message(f"iam_client.delete_role_policy(RoleName = {self.role_name}, PolicyName = {self.policy_name})")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            self.iam_client.delete_role_policy(RoleName = self.role_name, PolicyName = self.policy_name)
+        sic_main.exec_put(confirmation_flag,
+            f"iam_client.delete_role_policy(RoleName = {self.role_name}, PolicyName = {self.policy_name})",
+            lambda:
+                self.iam_client.delete_role_policy(RoleName = self.role_name, PolicyName = self.policy_name)
+        )
 
 class AttachedPolicyListHandler(common_action.ListHandler):
     def __init__(self, iam_client, role_name):
@@ -145,10 +154,12 @@ class AssumeRolePolicyHandler(common_action.ResourceHandler):
         return curr_data
 
     def put(self, confirmation_flag, src_data):
-        sic_main.add_update_message(f"iam_client.update_assume_role_policy(RoleName = {self.role_name}, ...)")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            policy_document_json = json.dumps(src_data)
-            self.iam_client.update_assume_role_policy(RoleName = self.role_name, PolicyDocument = policy_document_json)
+        policy_document_json = json.dumps(src_data)
+        sic_main.exec_put(confirmation_flag,
+            f"iam_client.update_assume_role_policy(RoleName = {self.role_name}, ...)",
+            lambda:
+                self.iam_client.update_assume_role_policy(RoleName = self.role_name, PolicyDocument = policy_document_json)
+        )
 
     def delete(self, confirmation_flag, curr_data):
         pass

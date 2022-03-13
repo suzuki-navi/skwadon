@@ -92,6 +92,8 @@ def put_s3_object(confirmation_flag, session, s3_path: str, body: str):
         return
     s3_bucket = m.group(1)
     s3_key = m.group(2)
-    sic_main.add_update_message(f"s3_client.put_object(Bucket = {s3_bucket}, Key = {s3_key}, ...)")
-    if confirmation_flag and sic_main.global_confirmation_flag:
-        s3_client.put_object(Bucket = s3_bucket, Key = s3_key, Body = body.encode('utf-8'))
+    sic_main.exec_put(confirmation_flag,
+        f"s3_client.put_object(Bucket = {s3_bucket}, Key = {s3_key}, ...)",
+        lambda:
+            s3_client.put_object(Bucket = s3_bucket, Key = s3_key, Body = body.encode('utf-8'))
+    )

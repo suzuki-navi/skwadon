@@ -101,20 +101,24 @@ class TableInfo:
     def create(self, confirmation_flag, src_data):
         update_data = copy.copy(src_data)
         update_data["Name"] = self.table_name
-        sic_main.add_update_message(f"glue_client.create_table(DatabaseName = {self.database_name}, TableInput = {{Name: {self.table_name}, ...}})")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            self.glue_client.create_table(DatabaseName = self.database_name,
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.create_table(DatabaseName = {self.database_name}, TableInput = {{Name: {self.table_name}, ...}})",
+            lambda:
+                self.glue_client.create_table(DatabaseName = self.database_name,
                 TableInput = update_data)
+        )
 
     def update(self, confirmation_flag, src_data):
         if src_data == self.describe():
             return
         update_data = copy.copy(src_data)
         update_data["Name"] = self.table_name
-        sic_main.add_update_message(f"glue_client.update_table(DatabaseName = {self.database_name}, TableInput = {{Name: {self.table_name}, ...}})")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            self.glue_client.update_table(DatabaseName = self.database_name,
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.update_table(DatabaseName = {self.database_name}, TableInput = {{Name: {self.table_name}, ...}})",
+            lambda:
+                self.glue_client.update_table(DatabaseName = self.database_name,
                 TableInput = update_data)
+        )
 
 class TableConfHandler(common_action.ResourceHandler):
 

@@ -21,10 +21,6 @@ def main():
     exec_main \
         (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
-# putアクションで --dry-run が指定されていなく、更新処理を実行することを示すフラグ
-# バグにより意図せず更新処理してしまうのが怖いので、引き回しせずにグローバルで持つことにする
-global_confirmation_flag = False
-
 ####################################################################################################
 # interprete parameters
 # パラメータ解釈
@@ -579,6 +575,18 @@ def do_exec(src_data):
             #handler.do_exec(src_data["resources"])
 
 ####################################################################################################
+
+# boto3で変更のAPIリクエストを実行する際には必ずこのメソッドを通すこと
+# dryrunでも通す
+# dryrunかどうかはconfirmation_flagで判定
+def exec_put(confirmation_flag, message, executor):
+    add_update_message(message)
+    if confirmation_flag and global_confirmation_flag:
+        executor()
+
+# putアクションで --dry-run が指定されていなく、更新処理を実行することを示すフラグ
+# バグにより意図せず更新処理してしまうのが怖いので、引き回しせずにグローバルで持つことにする
+global_confirmation_flag = False
 
 update_message_prefix = None
 update_message = []

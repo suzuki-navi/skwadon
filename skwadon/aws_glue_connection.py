@@ -51,17 +51,21 @@ class ConnectionConfHandler(common_action.ResourceHandler):
     def create(self, confirmation_flag, src_data):
         update_data = sic_lib.pickup(src_data, self.properties)
         update_data["Name"] = self.connection_name
-        sic_main.add_update_message(f"glue_client.create_connection(ConnectionInput = {{Name = {self.connection_name}, ...}})")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            self.glue_client.create_connection(ConnectionInput = update_data)
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.create_connection(ConnectionInput = {{Name = {self.connection_name}, ...}})",
+            lambda:
+                self.glue_client.create_connection(ConnectionInput = update_data)
+        )
 
     def update(self, confirmation_flag, src_data, curr_data):
         update_data = sic_lib.pickupAndCompareForUpdate(src_data, curr_data, self.properties)
         if update_data != None:
             update_data["Name"] = self.connection_name
-            sic_main.add_update_message(f"glue_client.update_connection(Name = {self.connection_name}, ...)")
-            if confirmation_flag and sic_main.global_confirmation_flag:
-                self.glue_client.update_connection(Name = self.connection_name, ConnectionInput = update_data)
+            sic_main.exec_put(confirmation_flag,
+                f"glue_client.update_connection(Name = {self.connection_name}, ...)",
+                lambda:
+                    self.glue_client.update_connection(Name = self.connection_name, ConnectionInput = update_data)
+            )
 
 class ConnectionConnectionHandler(common_action.ResourceHandler):
 

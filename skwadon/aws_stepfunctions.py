@@ -65,10 +65,12 @@ class StateMachineBasicHandler(common_action.ResourceHandler):
         if dirty:
             arn = self._calc_statemachine_arn()
             update_data = sic_lib.dict_key_to_lower(update_data)
-            sic_main.add_update_message(f"stepfunctions_client.update_state_machine(stateMachineArn = {arn}, ...)")
-            if confirmation_flag and sic_main.global_confirmation_flag:
-                self.stepfunctions_client.update_state_machine(stateMachineArn = arn, **update_data)
-                self.info = None
+            sic_main.exec_put(confirmation_flag,
+                f"stepfunctions_client.update_state_machine(stateMachineArn = {arn}, ...)",
+                lambda:
+                    self.stepfunctions_client.update_state_machine(stateMachineArn = arn, **update_data)
+            )
+            self.info = None
 
     def _calc_statemachine_arn(self):
         return calc_statemachine_arn(self.session, self.machine_name)

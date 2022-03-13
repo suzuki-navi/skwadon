@@ -67,17 +67,21 @@ class JobConfHandler(common_action.ResourceHandler):
         update_data = sic_lib.pickup(src_data, self.properties)
         update_data["Name"] = self.job_name
         update_data = self._modify_data_for_put(update_data)
-        sic_main.add_update_message(f"glue_client.create_job(Name = {self.job_name}, ...)")
-        if confirmation_flag and sic_main.global_confirmation_flag:
-            self.glue_client.create_job(**update_data)
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.create_job(Name = {self.job_name}, ...)",
+            lambda:
+                self.glue_client.create_job(**update_data)
+        )
 
     def update(self, confirmation_flag, src_data, curr_data):
         update_data = sic_lib.pickupAndCompareForUpdate(src_data, curr_data, self.properties)
         if update_data != None:
             update_data = self._modify_data_for_put(update_data)
-            sic_main.add_update_message(f"glue_client.update_job(JobName = {self.job_name}, ...)")
-            if confirmation_flag and sic_main.global_confirmation_flag:
-                self.glue_client.update_job(JobName = self.job_name, JobUpdate = update_data)
+            sic_main.exec_put(confirmation_flag,
+                f"glue_client.update_job(JobName = {self.job_name}, ...)",
+                lambda:
+                    self.glue_client.update_job(JobName = self.job_name, JobUpdate = update_data)
+            )
 
     def _modify_data_for_put(self, update_data):
         update_data = copy.copy(update_data)
