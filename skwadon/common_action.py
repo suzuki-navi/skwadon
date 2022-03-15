@@ -178,8 +178,6 @@ class ResourceHandler(Handler):
         def build_update_data(src_data, curr_data):
             if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
                 return (src_data, curr_data)
-            if len(src_data) == 0:
-                return ({}, {})
             src_data2 = {}
             curr_data2 = {}
             delete_flag = False
@@ -192,11 +190,12 @@ class ResourceHandler(Handler):
                     src_data2[name], curr_data2[name] = build_update_data(src_data[name], curr_data[name])
                 else:
                     src_data2[name] = src_data[name]
-            if not delete_flag:
-                for name in curr_data:
-                    if name == "*":
-                        continue
-                    if not name in src_data2:
+            for name in curr_data:
+                if name == "*":
+                    continue
+                if not name in src_data2:
+                    curr_data2[name] = curr_data[name]
+                    if not delete_flag:
                         src_data2[name] = curr_data[name]
             src_data2["*"] = None
             curr_data2["*"] = None
