@@ -185,6 +185,8 @@ class ResourceHandler(Handler):
                 if name == "*":
                     if src_data[name] == None:
                         delete_flag = True
+                    src_data2["*"] = None
+                    curr_data2["*"] = None
                     continue
                 if name in curr_data:
                     src_data2[name], curr_data2[name] = build_update_data(src_data[name], curr_data[name])
