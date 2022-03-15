@@ -34,11 +34,9 @@ class ListHandler(Handler):
         items = self._list()
         if not isinstance(src_data, dict) or len(src_data) == 0:
             result = {}
-            if len(items) == 0:
-                result["*"] = None
-            else:
-                for elem in items:
-                    result[elem] = {}
+            for elem in items:
+                result[elem] = {}
+            result["*"] = None
         else:
             result = {}
             for name, src_data2 in src_data.items():
@@ -46,6 +44,7 @@ class ListHandler(Handler):
                     for name in items:
                         if not name in src_data:
                             result[name] = {}
+                    result[name] = None
                 elif name in items:
                     result[name] = self.child_handler(name).do_get(src_data2)
                 else:
@@ -55,7 +54,9 @@ class ListHandler(Handler):
     def do_put(self, confirmation_flag, src_data):
         if src_data == None:
             return self.do_delete(confirmation_flag)
-        if not isinstance(src_data, dict) or len(src_data) == 0:
+        if not isinstance(src_data, dict):
+            return ({}, {})
+        if src_data == {}:
             return ({}, {})
         items = self._list()
         result1 = {}
@@ -101,6 +102,8 @@ class ListHandler(Handler):
     def do_create(self, confirmation_flag, src_data):
         result = {}
         for name in src_data:
+            if name == "*":
+                continue
             result[name] = self.child_handler(name).do_create(confirmation_flag, src_data[name])
         if confirmation_flag:
             items = self._list()
@@ -114,6 +117,8 @@ class ListHandler(Handler):
         result1 = {}
         result2 = {}
         for name in items:
+            if name == "*":
+                continue
             d1, d2 = self.child_handler(name).do_delete(confirmation_flag)
             result1[name] = d1
             result2[name] = d2
@@ -144,18 +149,19 @@ class ListHandler(Handler):
 # abstract
 class ResourceHandler(Handler):
     def do_get(self, src_data):
-        curr_data = self._encode_data(self.describe())
+        curr_data = sic_lib.skwadondict_encode(self.describe())
         def build_result_data(src_data, curr_data):
             if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
                 return curr_data
             if len(src_data) == 0:
-                return curr_data
+                return sic_lib.skwadondict_encode(curr_data)
             result = {}
             for name in src_data:
                 if name == "*":
                     for name in curr_data:
                         if not name in src_data:
-                            result[name] = {}
+                            result[name] = sic_lib.skwadondict_encode(curr_data[name])
+                    result[name] = None
                 elif name in curr_data:
                     result[name] = build_result_data(src_data[name], curr_data[name])
                 else:
@@ -168,7 +174,7 @@ class ResourceHandler(Handler):
             return self.do_delete(confirmation_flag)
         if src_data == {}:
             return ({}, {})
-        curr_data = self._encode_data(self.describe())
+        curr_data = sic_lib.skwadondict_encode(self.describe())
         def build_update_data(src_data, curr_data):
             if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
                 return (src_data, curr_data)
@@ -188,56 +194,38 @@ class ResourceHandler(Handler):
                     src_data2[name] = src_data[name]
             if not delete_flag:
                 for name in curr_data:
+                    if name == "*":
+                        continue
                     if not name in src_data2:
                         src_data2[name] = curr_data[name]
-            if len(src_data2) == 0:
-                src_data2["*"] = None
-            if len(curr_data2) == 0:
-                curr_data2["*"] = None
+            src_data2["*"] = None
+            curr_data2["*"] = None
+            # src_data2: 実際に self.update に渡す値
+            # curr_data2: コマンドの出力結果としての現在の値
             return (src_data2, curr_data2)
         src_data2, curr_data2 = build_update_data(src_data, curr_data)
         if src_data2 == curr_data:
             return (src_data, curr_data2)
-        self.update(confirmation_flag, self._decode_data(src_data2), curr_data)
+        self.update(confirmation_flag, sic_lib.skwadondict_decode(src_data2), curr_data)
         if confirmation_flag:
-            _, curr_data3 = build_update_data(src_data, self._encode_data(self.describe()))
+            _, curr_data3 = build_update_data(src_data, sic_lib.skwadondict_encode(self.describe()))
             return (curr_data3, curr_data2)
         else:
             return (src_data, curr_data2)
 
     def do_create(self, confirmation_flag, src_data):
-        self.create(confirmation_flag, self._decode_data(src_data))
+        self.create(confirmation_flag, sic_lib.skwadondict_decode(src_data))
         if not confirmation_flag:
             return src_data
-        new_data = self._encode_data(self.describe())
+        new_data = sic_lib.skwadondict_encode(self.describe())
         return new_data
 
     def do_delete(self, confirmation_flag):
-        curr_data = self._encode_data(self.describe())
+        curr_data = sic_lib.skwadondict_encode(self.describe())
         result1 = {}
         result2 = curr_data
         self.delete(confirmation_flag, curr_data)
         return (result1, result2)
-
-    def _decode_data(self, src_data):
-        if not isinstance(src_data, dict):
-            return src_data
-        src_data2 = {}
-        for name in src_data:
-            if name == "*":
-                continue
-            src_data2[name] = self._decode_data(src_data[name])
-        return src_data2
-
-    def _encode_data(self, src_data):
-        if not isinstance(src_data, dict):
-            return src_data
-        if len(src_data) == 0:
-            return {"*": None}
-        src_data2 = {}
-        for name in src_data:
-            src_data2[name] = self._encode_data(src_data[name])
-        return src_data2
 
     @abstractmethod
     def describe(self):
@@ -308,6 +296,8 @@ class NamespaceHandler(Handler):
             result1 = {}
             result2 = {}
             for name in src_data:
+                if name == "*":
+                    continue
                 if name in self.handler_map:
                     d1, d2 = self.handler_map[name].do_put(confirmation_flag, src_data[name])
                     result1[name] = d1
@@ -320,6 +310,8 @@ class NamespaceHandler(Handler):
         else:
             result = {}
             for name in src_data:
+                if name == "*":
+                    continue
                 if name in self.handler_map:
                     result[name] = self.handler_map[name].do_create(confirmation_flag, src_data[name])
         return result
