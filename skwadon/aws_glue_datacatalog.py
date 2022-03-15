@@ -171,15 +171,24 @@ class TableColumnsHandler(common_action.ResourceHandler):
         data = {}
         for elem in info:
             name = elem["Name"]
-            value = copy.copy(elem)
-            del value["Name"]
+            if len(elem) == 2 and "Type" in elem:
+                value = elem["Type"]
+            else:
+                value = copy.copy(elem)
+                del value["Name"]
             data[name] = value
         return data
 
     def _encode_columns(self, data):
         info = []
         for name, value in data.items():
-            elem = copy.copy(value)
-            elem["Name"] = name
+            if isinstance(value, str):
+                elem = {
+                    "Name": name,
+                    "Type": value,
+                }
+            else:
+                elem = copy.copy(value)
+                elem["Name"] = name
             info.append(elem)
         return info
