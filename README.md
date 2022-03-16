@@ -42,6 +42,8 @@ assumeRolePolicyを編集する
     $ skwadon [get] [-r] [--full] [--diff] [--repeat N] [aws [--profile AWS_PROFILE] [[-p] PATH]] [[-i] [-s] SRC_FILE] [< SRC_FILE]
     $ skwadon put [--dry-run] [aws [--profile AWS_PROFILE] [[-p] PATH] [[-s] SRC_FILE]] [< SRC_FILE]
 
+![squirrel](image.jpg)
+
 ## 対応サービス
 
 - `iam.roles.*.conf`
