@@ -12,15 +12,15 @@ import skwadon.aws as sic_aws
 
 def main():
     # interprete parameters
-    (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = parse_args()
+    (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm) = parse_args()
 
     # check parameters
-    (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = check_args \
-        (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm) = check_args \
+        (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
 
     # execution
     exec_main \
-        (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+        (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
 
 ####################################################################################################
 # interprete parameters
@@ -40,7 +40,6 @@ def parse_args():
     path = []
     src_file = None
     is_inplace = False
-    repeat_count = None
     is_dryrun = False
     confirm = None
     i = 1
@@ -77,11 +76,6 @@ def parse_args():
             i = i + 1
         elif a == "-i":
             is_inplace = True
-        elif a == "--repeat":
-            if i >= argCount:
-                raise Exception(f"Option parameter not found: {a}")
-            repeat_count = int(sys.argv[i])
-            i = i + 1
         elif a == "--force":
             confirm = True
         elif a == "--dry-run":
@@ -114,14 +108,14 @@ def parse_args():
             src_file = a
         else:
             raise Exception(f"Unknown parameter: {a}")
-    return (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    return (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
 
 ####################################################################################################
 # check parameters
 # パラメータの組み合わせチェック
 ####################################################################################################
 
-def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
+def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm):
     if len(path) > 0 and type == None:
         raise Exception("-p option needs aws parameter")
 
@@ -137,7 +131,6 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, th
         thats_all_flag = False
         src_file = None
         is_inplace = False
-        repeat_count = 1
 
     # pathが複数ある場合は --full とする
     if len(path) > 1:
@@ -155,24 +148,11 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, th
     # actionの指定がない場合は get とみなす
     if action == None:
         action = "get"
-        if repeat_count == None:
-            if type == None and src_file == None:
-                # 標準入力から取り込む場合はデフォルトは0
-                repeat_count = 0
-            else:
-                repeat_count = 1
-
-    # --repeat は get でのみ有効
-    if action != "get":
-        if repeat_count != None:
-            raise Exception(f"put action must not have --repeat option")
-
-    # --repeat は標準入力から取り込む場合を除いてデフォルト値1
-    if repeat_count == None:
-        repeat_count = 1
+        if type == None and src_file == None:
+            action = "cat"
 
     # is_diffの指定がない場合のデフォルト値設定
-    if action == "get":
+    if action == "get" or action == "cat":
         if is_diff == None:
             is_diff = False
     elif action == "put" or action == "delete":
@@ -206,7 +186,7 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, th
     if is_inplace:
         if src_file == None:
             raise Exception("-i option needs -s option")
-        if action != "get":
+        if action != "get" and action != "cat":
             raise Exception(f"{action} must not have -i option")
         if is_diff:
             raise Exception(f"only one of --diff and -i can be specified")
@@ -224,14 +204,14 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, th
             path2.append([])
         path = path2
 
-    return (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    return (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
 
 ####################################################################################################
 # execution
 # 実行
 ####################################################################################################
 
-def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
+def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm):
     global global_confirmation_flag
     confirmation_flag = False
 
@@ -267,8 +247,13 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, tha
     if action == "delete":
         action = "put"
 
-    if action == "get":
-        data1 = do_get_n(data0, repeat_count, thats_all_flag)
+    if action == "cat":
+        data1 = data0
+        r1 = data0
+        r2 = data1
+        action = "get"
+    elif action == "get":
+        data1 = do_get_n(data0, thats_all_flag)
         r1 = data0 # src
         r2 = data1 # クラウド側
     elif action == "put":
@@ -527,18 +512,16 @@ def diff_yaml(src_data, dst_data):
 
 ####################################################################################################
 
-def do_get_n(data0, repeat_count, thats_all_flag):
+def do_get_n(data0, thats_all_flag):
     data1 = data0
-    for i in range(repeat_count):
-        if isinstance(data1, list):
-            data2 = []
-            for elem in data1:
-                r = do_get(elem, thats_all_flag)
-                data2.append(r)
-        else:
-            data2 = do_get(data1, thats_all_flag)
-        data1 = data2
-    return data1
+    if isinstance(data1, list):
+        data2 = []
+        for elem in data1:
+            r = do_get(elem, thats_all_flag)
+            data2.append(r)
+    else:
+        data2 = do_get(data1, thats_all_flag)
+    return data2
 
 def do_get(src_data, thats_all_flag):
     global update_message_prefix

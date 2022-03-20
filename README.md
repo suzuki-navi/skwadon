@@ -1,6 +1,6 @@
 # skwadon
 
-AWSのリソースの情報をYAMLで取得し、また設定できるツール。
+AWSのリソースの情報をYAMLで取得(get)し、また設定(put)するツール。
 
 IAM Roleの一覧を見る
 
@@ -12,39 +12,38 @@ IAM Roleの一覧を見る
     AWSServiceRoleForAmazonGuardDuty: {}
     ......
 
-IAM Roleについてはこの項目にアクセスできる
+IAM Roleの詳細を見る
 
     $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway
-    conf: {}
+    conf:
+      Description: The Service Linked Role is used by Amazon API Gateway.
+      MaxSessionDuration: 3600
     inlinePolicies: {}
-    attachedPolicies: {}
-    assumeRolePolicy: {}
-
-この中でassumeRolePolicyを見る
-
-    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy
-    Version: '2012-10-17'
-    Statement:
-    - Effect: Allow
-      Principal:
-        Service: ops.apigateway.amazonaws.com
-      Action: sts:AssumeRole
+    attachedPolicies:
+      APIGatewayServiceRolePolicy: {}
+    assumeRolePolicy:
+      Version: '2012-10-17'
+      Statement:
+      - Effect: Allow
+        Principal:
+          Service: ops.apigateway.amazonaws.com
+        Action: sts:AssumeRole
 
 assumeRolePolicyを編集する
 
     $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy > policy.yml
     $ vi policy.yml
-    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy put --diff > policy.yml
-    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy put --confirm 1348 > policy.yml
+    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy put --diff < policy.yml
+    $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway.assumeRolePolicy put --confirm 1348 < policy.yml
 
 ## Usage
 
-    $ skwadon [get] [-r] [--full] [--diff] [--repeat N] [aws [--profile AWS_PROFILE] [[-p] PATH]] [[-i] [-s] SRC_FILE] [< SRC_FILE]
-    $ skwadon put [--dry-run] [aws [--profile AWS_PROFILE] [[-p] PATH] [[-s] SRC_FILE]] [< SRC_FILE]
+    $ skwadon [get] [-r] [--full] [--diff] [aws [--profile AWS_PROFILE] [[-p] PATH]] [[-i] [-s] SRC_FILE] [< SRC_FILE]
+    $ skwadon put [--dry-run|--diff] [aws [--profile AWS_PROFILE] [[-p] PATH] [[-s] SRC_FILE]] [< SRC_FILE]
 
 ![squirrel](image.jpg)
 
-## 対応サービス
+## Supported Services
 
 - `iam.roles.*.conf`
     - describe, create, update, delete
@@ -57,6 +56,10 @@ assumeRolePolicyを編集する
 - `s3.buckets.*.conf`
     - describe
 - `s3.buckets.*.bucketPolicy`
+    - describe
+- `lambda.functions.*.conf`
+    - describe
+- `lambda.functions.*.sources`
     - describe
 - `stepfunctions.stateMachines.*.conf`
     - describe, update
@@ -95,21 +98,19 @@ assumeRolePolicyを編集する
 
 Input
 
-- `{"*": null}` の箇所はマップの中のすべての要素を取得する
+- `'*': null` はマップの中のすべての要素を取得することを示す
     - 再帰的に下の階層まで取得するかどうかは階層の仕様に依存
 
 Output
 
-- `{"*": null}` はほかに項目がないことを示す
-- `{"foo": null}` はその名前の要素がないことを示す
+- `foo: null` はその名前の要素がないことを示す
 
 ## Rule of put action
 
 Input
 
-- `null` は削除することを示す
-- `{"*": null}` の箇所はマップの中のすべての要素を削除する
-
+- `foo: null` はその要素を削除することを示す
+- `'*': null` はマップの中の存在を明示した要素以外のすべての要素を削除することを示す
 
 ## Installation
 

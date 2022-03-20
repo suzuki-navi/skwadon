@@ -10,6 +10,7 @@ import skwadon.common_action as common_action
 import skwadon.aws_iam_role         as aws_iam_role
 import skwadon.aws_s3_bucket        as aws_s3_bucket
 import skwadon.aws_stepfunctions    as aws_stepfunctions
+import skwadon.aws_lambda           as aws_lambda
 import skwadon.aws_glue_datacatalog as aws_glue_datacatalog
 import skwadon.aws_glue_crawler     as aws_glue_crawler
 import skwadon.aws_glue_job         as aws_glue_job
@@ -34,6 +35,7 @@ def get_handler(src_data):
         None, [], {
         "iam.roles": aws_iam_role.RoleListHandler(session),
         "s3.buckets": aws_s3_bucket.BucketListHandler(session),
+        "lambda.functions": aws_lambda.FunctionListHandler(session),
         "stepFunctions.stateMachines": aws_stepfunctions.StateMachineListHandler(session),
         "glue.crawlers": aws_glue_crawler.CrawlerListHandler(session),
         "glue.databases": aws_glue_datacatalog.DatabaseListHandler(session),
