@@ -81,7 +81,8 @@ class TableListHandler(common_action.ListHandler):
 
     def child_handler(self, name):
         info = TableInfo(self.glue_client, self.database_name, name)
-        return common_action.NamespaceHandler({
+        return common_action.NamespaceHandler(
+            "conf", ["conf", "columns"], {
             "conf": TableConfHandler(info),
             "columns": TableColumnsHandler(info),
         })
