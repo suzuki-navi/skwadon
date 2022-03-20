@@ -366,6 +366,8 @@ def get_by_path(data, path):
     if len(path) != 1:
         return data
     path = path[0]
+    if "*" in path:
+        return data
     def sub(data):
         if path == None:
             result = data

@@ -38,12 +38,11 @@ class ListHandler(Handler):
         result2 = {} # 変更前のクラウド
         for name, value in src_data.items():
             if name == "*":
-                if value == None:
-                    for name2 in self._list():
-                        if not name2 in src_data:
-                            d1, d2 = self.child_handler(name2).do_put(confirmation_flag, None)
-                            result1[name2] = None
-                            result2[name2] = d2
+                for name2 in self._list():
+                    if not name2 in src_data:
+                        d1, d2 = self.child_handler(name2).do_put(confirmation_flag, None)
+                        result1[name2] = None
+                        result2[name2] = d2
             elif value == None:
                 curr_data = self.child_handler(name).do_get(None, False)
                 if curr_data != None:

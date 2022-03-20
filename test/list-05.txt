@@ -1,0 +1,14 @@
+$ pipenv run skwadon testcloud seeds.*.conf.Count
+
+> type: testcloud
+> resources:
+>   seeds:
+>     himawari1:
+>       conf:
+>         Count: 10
+>     himawari2:
+>       conf:
+>         Count: 10
+>     himawari3:
+>       conf:
+>         Count: 10
