@@ -1,0 +1,60 @@
+$ pipenv run skwadon -s var/input.txt put --diff
+
+< type: testcloud
+< resources:
+<   seeds:
+<     himawari1: {}
+<     '*': null
+
+> TESTCLOUD: delete status, confirmation_flag = False
+> curr_data:
+>   status: OK
+> testcloud: api: delete status
+> TESTCLOUD: delete, confirmation_flag = False
+> curr_data:
+>   Description: himawari no tane 'himawari2'
+>   Count: 10
+>   Color:
+>     r: 30
+>     g: 20
+>     b: 15
+> testcloud: api: delete conf
+> TESTCLOUD: delete status, confirmation_flag = False
+> curr_data:
+>   status: OK
+> testcloud: api: delete status
+> TESTCLOUD: delete, confirmation_flag = False
+> curr_data:
+>   Description: himawari no tane 'himawari3'
+>   Count: 10
+>   Color:
+>     r: 30
+>     g: 20
+>     b: 15
+> testcloud: api: delete conf
+> @@ -2,23 +2,5 @@
+>  resources:
+>    seeds:
+>      himawari1: {}
+> -    himawari2:
+> -      conf:
+> -        Description: himawari no tane 'himawari2'
+> -        Count: 10
+> -        Color:
+> -          r: 30
+> -          g: 20
+> -          b: 15
+> -      status:
+> -        status: OK
+> -    himawari3:
+> -      conf:
+> -        Description: himawari no tane 'himawari3'
+> -        Count: 10
+> -        Color:
+> -          r: 30
+> -          g: 20
+> -          b: 15
+> -      status:
+> -        status: OK
+> +    himawari2: null
+> +    himawari3: null

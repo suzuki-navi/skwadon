@@ -1,0 +1,9 @@
+$ pipenv run skwadon testcloud seeds -s var/input.txt
+
+< himawari1: {}
+< "*": null
+< himawari4: {}
+
+> himawari1: {}
+> himawari2: {}
+> himawari3: {}

@@ -63,25 +63,6 @@ def random_string(length):
     chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     return ''.join([random.choice(chars) for i in range(length)])
 
-def skwadondict_decode(src_data):
-    if not isinstance(src_data, dict):
-        return src_data
-    src_data2 = {}
-    for name in src_data:
-        if name == "*":
-            continue
-        src_data2[name] = skwadondict_decode(src_data[name])
-    return src_data2
-
-def skwadondict_encode(src_data):
-    if not isinstance(src_data, dict):
-        return src_data
-    src_data2 = {}
-    for name in src_data:
-        src_data2[name] = skwadondict_encode(src_data[name])
-    src_data2["*"] = None
-    return src_data2
-
 def pickup(src_data, keys):
     src_data2 = {}
     for key in keys:

@@ -4,22 +4,23 @@ from re import S
 import sys
 import yaml
 
-import skwadon.aws as sic_aws
 import skwadon.lib as sic_lib
+import skwadon.testcloud as testcloud
+import skwadon.aws as sic_aws
 
 ####################################################################################################
 
 def main():
     # interprete parameters
-    (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = parse_args()
+    (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = parse_args()
 
     # check parameters
-    (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = check_args \
-        (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
-    
+    (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm) = check_args \
+        (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+
     # execution
     exec_main \
-        (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+        (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
 ####################################################################################################
 # interprete parameters
@@ -33,7 +34,8 @@ def parse_args():
     is_full = None
     is_diff = None
     is_completion = None
-    type = None # aws
+    thats_all_flag = False
+    type = None # testcloud, aws
     profile = None
     path = []
     src_file = None
@@ -54,6 +56,8 @@ def parse_args():
             is_full = True
         elif a == "--diff":
             is_diff = True
+        elif a == "--thats-all":
+            thats_all_flag = True
         elif a == "--no-diff":
             is_diff = False
         elif a == "--profile":
@@ -100,22 +104,24 @@ def parse_args():
             action = "delete"
         elif action == None and a == "exec":
             action = "exec"
+        elif a == "testcloud":
+            type = "testcloud"
         elif a == "aws":
             type = "aws"
-        elif type == "aws" and src_file == None:
+        elif type and src_file == None:
             path.append(a)
         elif type == None and path == None and src_file == None:
             src_file = a
         else:
             raise Exception(f"Unknown parameter: {a}")
-    return (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    return (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
 ####################################################################################################
 # check parameters
 # パラメータの組み合わせチェック
 ####################################################################################################
 
-def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
+def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
     if len(path) > 0 and type == None:
         raise Exception("-p option needs aws parameter")
 
@@ -128,6 +134,7 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, ty
         is_full = False
         is_diff = False
         is_completion = True
+        thats_all_flag = False
         src_file = None
         is_inplace = False
         repeat_count = 1
@@ -213,16 +220,18 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, ty
                 if p.endswith("."):
                     p = p[0:len(p)-1]
                 path2.append(p.split("."))
+        if len(path) == 0 and src_file == None:
+            path2.append([])
         path = path2
 
-    return (help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
+    return (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm)
 
 ####################################################################################################
 # execution
 # 実行
 ####################################################################################################
 
-def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
+def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, repeat_count, confirm):
     global global_confirmation_flag
     confirmation_flag = False
 
@@ -245,9 +254,12 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
             data_put = None # 削除の意味
         elif action == "exec":
             data_put = None
-        else:
-            data_put = load_simple(None)
+        elif action == "put":
+            data_put = load_simple(src_file, {})
             # 標準入力がない場合は {} になる
+        else:
+            data_put = load_simple(src_file, None)
+            # 標準入力がない場合は null になる
         data0 = build_path_data_full(type, profile, path, data_put)
     else:
         data0 = load_yaml(src_file)
@@ -256,7 +268,7 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, typ
         action = "put"
 
     if action == "get":
-        data1 = do_get_n(data0, repeat_count)
+        data1 = do_get_n(data0, repeat_count, thats_all_flag)
         r1 = data0 # src
         r2 = data1 # クラウド側
     elif action == "put":
@@ -329,11 +341,11 @@ def get_correct_confirm_parameter():
 
 # -p オプションからデータ作成
 def build_path_data_full(type, profile, path, data_put):
-    data0 = {
-        "type": type,
-        "profile": profile,
-        "resources": build_path_data(path, data_put),
-    }
+    data0 = {}
+    data0["type"] = type
+    if profile:
+        data0["profile"] = profile
+    data0["resources"] = build_path_data(path, data_put)
     return data0
 
 def build_path_data(path, data_put):
@@ -400,12 +412,12 @@ def load_yaml(src_file):
         data = yaml.safe_load(sys.stdin)
     return data
 
-def load_simple(src_file):
+def load_simple(src_file, default):
     if src_file:
         with open(src_file) as f:
             data_str = f.read()
     elif sys.stdin.isatty():
-        return {}
+        return default
     else:
         data_str = sys.stdin.read()
     data = yaml.safe_load(data_str)
@@ -515,29 +527,33 @@ def diff_yaml(src_data, dst_data):
 
 ####################################################################################################
 
-def do_get_n(data0, repeat_count):
+def do_get_n(data0, repeat_count, thats_all_flag):
     data1 = data0
     for i in range(repeat_count):
         if isinstance(data1, list):
             data2 = []
             for elem in data1:
-                r = do_get(elem)
+                r = do_get(elem, thats_all_flag)
                 data2.append(r)
         else:
-            data2 = do_get(data1)
+            data2 = do_get(data1, thats_all_flag)
         data1 = data2
     return data1
 
-def do_get(src_data):
+def do_get(src_data, thats_all_flag):
     global update_message_prefix
-    if src_data["type"] == "aws":
+    result = src_data
+    if src_data["type"] == "testcloud":
+        handler = testcloud.get_handler(src_data)
+        result = copy.copy(src_data)
+        if "resources" in src_data:
+            result["resources"] = handler.do_get(src_data["resources"], thats_all_flag)
+    elif src_data["type"] == "aws":
         handler = sic_aws.get_handler(src_data)
         result = copy.copy(src_data)
         if "resources" in src_data:
-            result["resources"] = handler.do_get(src_data["resources"])
-        return result
-    else:
-        return src_data
+            result["resources"] = handler.do_get(src_data["resources"], thats_all_flag)
+    return result
 
 def do_put_n(confirmation_flag, data0):
     if isinstance(data0, list):
@@ -553,9 +569,14 @@ def do_put_n(confirmation_flag, data0):
 
 def do_put(confirmation_flag, src_data):
     global update_message_prefix
-    if src_data["type"] == "aws":
-        update_message_prefix = sic_aws.get_message_prefix(src_data)
-        handler = sic_aws.get_handler(src_data)
+    mod = None
+    if src_data["type"] == "testcloud":
+        mod = testcloud
+    elif src_data["type"] == "aws":
+        mod = sic_aws
+    if mod:
+        update_message_prefix = mod.get_message_prefix(src_data)
+        handler = mod.get_handler(src_data)
         data1 = copy.copy(src_data)
         data2 = copy.copy(src_data)
         if "resources" in src_data:
@@ -568,8 +589,13 @@ def do_put(confirmation_flag, src_data):
         return (src_data, src_data)
 
 def do_exec(src_data):
-    if src_data["type"] == "aws":
-        handler = sic_aws.get_handler(src_data)
+    mod = None
+    if src_data["type"] == "testcloud":
+        mod = testcloud
+    elif src_data["type"] == "aws":
+        mod = sic_aws
+    if mod:
+        handler = mod.get_handler(src_data)
         if "resources" in src_data:
             raise Exception("TODO")
             #handler.do_exec(src_data["resources"])

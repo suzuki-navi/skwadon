@@ -1,0 +1,5 @@
+$ pipenv run skwadon testcloud seeds
+
+> himawari1: {}
+> himawari2: {}
+> himawari3: {}

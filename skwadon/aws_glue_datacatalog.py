@@ -1,6 +1,8 @@
 import copy
 import json
 
+import botocore
+
 import skwadon.main as sic_main
 import skwadon.lib as sic_lib
 import skwadon.common_action as common_action
@@ -8,9 +10,14 @@ import skwadon.common_action as common_action
 class DatabaseListHandler(common_action.ListHandler):
     def __init__(self, session):
         self.session = session
+        self.glue_client = None
+
+    def init_client(self):
+        if self.glue_client == None:
+            self.glue_client = self.session.client("glue")
 
     def list(self):
-        self.glue_client = self.session.client("glue")
+        self.init_client()
         result = []
         res = self.glue_client.get_databases()
         while True:
@@ -23,7 +30,9 @@ class DatabaseListHandler(common_action.ListHandler):
         return result
 
     def child_handler(self, name):
-        return common_action.NamespaceHandler({
+        self.init_client()
+        return common_action.NamespaceHandler(
+            "conf", ["conf"], {
             "conf": DatabaseConfHandler(self.glue_client, name),
             "tables": TableListHandler(self.glue_client, name),
         })
@@ -43,9 +52,15 @@ class DatabaseConfHandler(common_action.ResourceHandler):
         self.database_name = database_name
 
     def describe(self):
-        res = self.glue_client.get_database(Name = self.database_name)
-        curr_data = sic_lib.pickup(res["Database"], self.properties)
-        return curr_data
+        try:
+            res = self.glue_client.get_database(Name = self.database_name)
+            curr_data = sic_lib.pickup(res["Database"], self.properties)
+            return curr_data
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "EntityNotFoundException":
+                return None
+            else:
+                raise
 
 class TableListHandler(common_action.ListHandler):
     def __init__(self, glue_client, database_name):

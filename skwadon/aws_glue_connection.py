@@ -2,6 +2,8 @@ import copy
 import json
 import re
 
+import botocore
+
 import skwadon.main as sic_main
 import skwadon.lib as sic_lib
 import skwadon.common_action as common_action
@@ -9,9 +11,14 @@ import skwadon.common_action as common_action
 class ConnectionListHandler(common_action.ListHandler):
     def __init__(self, session):
         self.session = session
+        self.glue_client = None
+
+    def init_client(self):
+        if self.glue_client == None:
+            self.glue_client = self.session.client("glue")
 
     def list(self):
-        self.glue_client = self.session.client("glue")
+        self.init_client()
         result = []
         res = self.glue_client.get_connections()
         while True:
@@ -24,7 +31,9 @@ class ConnectionListHandler(common_action.ListHandler):
         return result
 
     def child_handler(self, name):
-        return common_action.NamespaceHandler({
+        self.init_client()
+        return common_action.NamespaceHandler(
+            "conf", ["conf"], {
             "conf": ConnectionConfHandler(self.glue_client, name),
             "connection": ConnectionConnectionHandler(self.glue_client, name),
         })
@@ -44,9 +53,15 @@ class ConnectionConfHandler(common_action.ResourceHandler):
         self.connection_name = connection_name
 
     def describe(self):
-        res = self.glue_client.get_connection(Name = self.connection_name)
-        curr_data = sic_lib.pickup(res["Connection"], self.properties)
-        return curr_data
+        try:
+            res = self.glue_client.get_connection(Name = self.connection_name)
+            curr_data = sic_lib.pickup(res["Connection"], self.properties)
+            return curr_data
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "EntityNotFoundException":
+                return None
+            else:
+                raise
 
     def create(self, confirmation_flag, src_data):
         update_data = sic_lib.pickup(src_data, self.properties)

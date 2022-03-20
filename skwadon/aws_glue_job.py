@@ -11,9 +11,14 @@ import skwadon.aws as sic_aws
 class JobListHandler(common_action.ListHandler):
     def __init__(self, session):
         self.session = session
+        self.glue_client = None
+
+    def init_client(self):
+        if self.glue_client == None:
+            self.glue_client = self.session.client("glue")
 
     def list(self):
-        self.glue_client = self.session.client("glue")
+        self.init_client()
         result = []
         res = self.glue_client.get_jobs()
         while True:
@@ -26,8 +31,10 @@ class JobListHandler(common_action.ListHandler):
         return result
 
     def child_handler(self, name):
+        self.init_client()
         conf_handler = JobConfHandler(self.glue_client, name)
-        return common_action.NamespaceHandler({
+        return common_action.NamespaceHandler(
+            "conf", ["conf", "source"], {
             "conf": conf_handler,
             "source": JobSourceHandler(self.session, conf_handler),
             "bookmark": JobBookmarkHandler(self.glue_client, name),
@@ -59,9 +66,15 @@ class JobConfHandler(common_action.ResourceHandler):
         self.job_name = job_name
 
     def describe(self):
-        res = self.glue_client.get_job(JobName = self.job_name)
-        curr_data = sic_lib.pickup(res["Job"], self.properties)
-        return curr_data
+        try:
+            res = self.glue_client.get_job(JobName = self.job_name)
+            curr_data = sic_lib.pickup(res["Job"], self.properties)
+            return curr_data
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "EntityNotFoundException":
+                return None
+            else:
+                raise
 
     def create(self, confirmation_flag, src_data):
         update_data = sic_lib.pickup(src_data, self.properties)

@@ -1,5 +1,7 @@
 import json
 
+import botocore.exceptions
+
 import skwadon.main as sic_main
 import skwadon.lib as sic_lib
 import skwadon.common_action as common_action
@@ -7,9 +9,14 @@ import skwadon.common_action as common_action
 class RoleListHandler(common_action.ListHandler):
     def __init__(self, session):
         self.session = session
+        self.iam_client = None
+
+    def init_client(self):
+        if self.iam_client == None:
+            self.iam_client = self.session.client("iam")
 
     def list(self):
-        self.iam_client = self.session.client("iam")
+        self.init_client()
         result = []
         res = self.iam_client.list_roles()
         while True:
@@ -22,7 +29,9 @@ class RoleListHandler(common_action.ListHandler):
         return result
 
     def child_handler(self, name):
-        return common_action.NamespaceHandler({
+        self.init_client()
+        return common_action.NamespaceHandler(
+            "conf", ["conf", "inlinePolicies", "attachedPolicies", "assumeRolePolicy"], {
             "conf": RoleConfHandler(self.iam_client, name),
             "inlinePolicies": RoleInlinePolicyListHandler(self.iam_client, name),
             "attachedPolicies": AttachedPolicyListHandler(self.iam_client, name),
@@ -35,9 +44,15 @@ class RoleConfHandler(common_action.ResourceHandler):
         self.role_name = role_name
 
     def describe(self):
-        res = self.iam_client.get_role(RoleName = self.role_name)
-        curr_data = sic_lib.pickup(res["Role"], ["Description", "MaxSessionDuration"])
-        return curr_data
+        try:
+            res = self.iam_client.get_role(RoleName = self.role_name)
+            curr_data = sic_lib.pickup(res["Role"], ["Description", "MaxSessionDuration"])
+            return curr_data
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchEntity":
+                return None
+            else:
+                raise
 
     def create(self, confirmation_flag, src_data):
         update_data = {}
@@ -108,8 +123,14 @@ class RoleInlinePolicyHandler(common_action.ResourceHandler):
         self.policy_name = policy_name
 
     def describe(self):
-        res = self.iam_client.get_role_policy(RoleName = self.role_name, PolicyName = self.policy_name)
-        return res["PolicyDocument"]
+        try:
+            res = self.iam_client.get_role_policy(RoleName = self.role_name, PolicyName = self.policy_name)
+            return res["PolicyDocument"]
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchEntity":
+                return None
+            else:
+                raise
 
     def put(self, confirmation_flag, src_data):
         policy_document_json = json.dumps(src_data)
@@ -149,9 +170,15 @@ class AssumeRolePolicyHandler(common_action.ResourceHandler):
         self.role_name = role_name
 
     def describe(self):
-        res = self.iam_client.get_role(RoleName = self.role_name)
-        curr_data = sic_lib.dictlib_get(res, "Role.AssumeRolePolicyDocument")
-        return curr_data
+        try:
+            res = self.iam_client.get_role(RoleName = self.role_name)
+            curr_data = sic_lib.dictlib_get(res, "Role.AssumeRolePolicyDocument")
+            return curr_data
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchEntity":
+                return None
+            else:
+                raise
 
     def put(self, confirmation_flag, src_data):
         policy_document_json = json.dumps(src_data)

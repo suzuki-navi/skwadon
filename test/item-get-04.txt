@@ -1,0 +1,4 @@
+$ pipenv run skwadon testcloud seeds.himawari1.conf.Color.r
+
+> 30
+> ...

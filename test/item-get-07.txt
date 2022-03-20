@@ -1,0 +1,15 @@
+$ pipenv run skwadon testcloud seeds.himawari1 -s var/input.txt --thats-all
+
+< conf:
+<   Count: 10
+<   Color:
+<     r: 30
+<     "*": null
+
+> conf:
+>   Count: 10
+>   Color:
+>     r: 30
+>     g: 20
+>     b: 15
+>     '*': null

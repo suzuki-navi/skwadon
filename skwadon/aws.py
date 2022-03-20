@@ -30,7 +30,8 @@ def get_message_prefix(data):
 
 def get_handler(src_data):
     session = create_aws_session(src_data)
-    return common_action.NamespaceHandler({
+    return common_action.NamespaceHandler(
+        None, [], {
         "iam.roles": aws_iam_role.RoleListHandler(session),
         "s3.buckets": aws_s3_bucket.BucketListHandler(session),
         "stepFunctions.stateMachines": aws_stepfunctions.StateMachineListHandler(session),

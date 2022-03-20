@@ -1,33 +1,48 @@
 import copy
 import json
 
+import botocore
+
 import skwadon.lib as sic_lib
 import skwadon.common_action as common_action
 
 class ClusterListHandler(common_action.ListHandler):
     def __init__(self, session):
         self.session = session
+        self.redshift_client = None
+        self.clusters = None
+
+    def init_client(self):
+        if self.redshift_client == None:
+            self.redshift_client = self.session.client("redshift")
+            self.clusters = {}
+            res = self.redshift_client.describe_clusters()
+            while True:
+                for elem in res['Clusters']:
+                    name = elem["ClusterIdentifier"]
+                    self.clusters[name] = elem
+                if not "Marker" in res:
+                    break
+                res = self.redshift_client.describe_clusters(Marker = res["Marker"])
 
     def list(self):
-        self.redshift_client = self.session.client("redshift")
+        self.init_client()
         result = []
-        self.clusters = {}
-        res = self.redshift_client.describe_clusters()
-        while True:
-            for elem in res['Clusters']:
-                name = elem["ClusterIdentifier"]
-                result.append(name)
-                self.clusters[name] = elem
-            if not "Marker" in res:
-                break
-            res = self.redshift_client.describe_clusters(Marker = res["Marker"])
+        for name in self.clusters:
+            result.append(name)
         return result
 
     def child_handler(self, name):
-        return common_action.NamespaceHandler({
-            "conf": ClusterConfHandler(name, self.clusters[name]),
-            "status": ClusterStatusHandler(name, self.clusters[name]),
-            "connection": ClusterConnectionHandler(self.redshift_client, name, self.clusters[name]),
+        self.init_client()
+        if name in self.clusters:
+            info = self.clusters[name]
+        else:
+            info = None
+        return common_action.NamespaceHandler(
+            "conf", ["conf"], {
+            "conf": ClusterConfHandler(name, info),
+            "status": ClusterStatusHandler(name, info),
+            "connection": ClusterConnectionHandler(self.redshift_client, name, info),
         })
 
 class ClusterConfHandler(common_action.ResourceHandler):
@@ -54,6 +69,8 @@ class ClusterConfHandler(common_action.ResourceHandler):
         self.cluster_info = cluster_info
 
     def describe(self):
+        if self.cluster_info == None:
+            return None
         curr_data = sic_lib.pickup(self.cluster_info, self.properties)
         return curr_data
 

@@ -93,197 +93,22 @@ assumeRolePolicyを編集する
 
 ## Rule of get action
 
-getアクションでは入力のYAMLの内容をクラウドに確認しに行く。
-
-### example 1
-
-空のマッピング　`{}` はskwadonでは「不明」を表す特別な意味を持つ。
-
-入力中の `{}` となっている箇所は1階層掘って詳細を取得しに行く。
-
 Input
 
-    elem: {}
-
-Cloud
-
-    elem:
-        a: ...
-        b: ...
-        c: ...
-        d: ...
+- `{"*": null}` の箇所はマップの中のすべての要素を取得する
+    - 再帰的に下の階層まで取得するかどうかは階層の仕様に依存
 
 Output
 
-    elem:
-        a: {}
-        b: {}
-        c: {}
-        d: {}
-
-skwadonで空のマッピング自体を `{"*": null}` と表現する。キーの `*` もskwadonでは特別な意味を持つ。
-
-### example 2
-
-要素の一部だけを書くと、その要素についてのみ情報を取得する。
-
-Input
-
-    elem:
-        b: ...
-        c: ...
-
-Cloud
-
-    elem:
-        a: ...
-        b: ...
-        c: ...
-        d: ...
-
-Output
-
-    elem:
-        b: ...
-        c: ...
-
-### example 3
-
-キーの `*` はskwadonでは特別な意味を持ち、
-
-Input
-
-    elem:
-        b: ...
-        c: ...
-        '*': {}
-
-上記の入力は
-
-    elem:
-        b: ...
-        c: ...
-
-と
-
-    elem: {}
-
-の組み合わせとなる。
-
-Cloud
-
-    items:
-        a: ...
-        b: ...
-        c: ...
-        d: ...
-
-Output
-
-    items:
-        b: ...
-        c: ...
-        a: {}
-        d: {}
+- `{"*": null}` はほかに項目がないことを示す
+- `{"foo": null}` はその名前の要素がないことを示す
 
 ## Rule of put action
 
-putアクションでは入力のYAMLの内容をクラウドに設定しに行く。
-
-出力は設定前のクラウドの状態でありgetアクションとほぼ同じ。 `{}` についてはgetアクションと異なり1階層掘ることをしない。
-
-### example 1
-
 Input
 
-    elem: {}
-
-Cloud before change
-
-    elem:
-        a: ...
-        b: ...
-        c: ...
-        d: ...
-
-Cloud after change (no change)
-
-    elem:
-        a: ...
-        b: ...
-        c: ...
-        d: ...
-
-Output
-
-    elem: {}
-
-### example 2
-
-要素の一部だけを書くと、その要素についてのみ設定する。
-
-Input
-
-    elem:
-        b: ...
-        c: ...
-
-Cloud before change
-
-    elem:
-        a: ...
-        b: ...
-        c: ...
-        d: ...
-
-Cloud after change
-
-    elem:
-        a: ...
-        b: ... (changed)
-        c: ... (changed)
-        d: ...
-
-Output
-
-    elem:
-        b: ... (before change)
-        c: ... (before change)
-
-### example 3
-
-キーの `*` はskwadonでは特別な意味を持ち、以下ではbとc以外の要素を削除する意味になる。
-
-Input
-
-    elem:
-        b: ...
-        c: ...
-        '*': null
-
-Cloud before change
-
-    elem:
-        a: ...
-        b: ...
-        c: ...
-        d: ...
-
-Cloud after change
-
-    elem:
-        b: ... (changed)
-        c: ... (changed)
-
-Output
-
-    elem:
-        b: ... (before change)
-        c: ... (before change)
-        a: null
-        d: null
-
-
+- `null` は削除することを示す
+- `{"*": null}` の箇所はマップの中のすべての要素を削除する
 
 
 ## Installation

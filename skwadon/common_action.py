@@ -5,131 +5,55 @@ from termios import TIOCPKT_DOSTOP
 
 import skwadon.main as sic_main
 import skwadon.lib as sic_lib
+import skwadon.action_lib as action_lib
 
 class Handler:
-    # abstract
-    def do_get(self, src_data):
+
+    @abstractmethod
+    def do_get(self, src_data, thats_all_flag):
         return {}
 
-    # abstract
-    # 返り値は dryrunでは (入力, 変更前のクラウド)
-    # 非dryrunでは (変更後のクラウド, 変更前のクラウド)
-    def do_put(self, confirmation_flag, src_data):
-        return ({}, {})
-
-    # abstract
-    # 返り値は dryrunでは 入力
-    # 非dryrunでは 変更後のクラウド
-    def do_create(self, confirmation_flag, src_data):
-        return ({}, {})
-
-    # abstract
-    # 返り値は (変更後のクラウド, 変更前のクラウド)
-    def do_delete(self, confirmation_flag):
-        return ({}, {})
+    # 返り値
+    #   dryrun(confirmation_flag=False): (入力, 変更前のクラウド)
+    #   更新実行(confirmation_flag=True): (変更後のクラウド, 変更前のクラウド)
+    #@abstractmethod
+    #def do_put(self, confirmation_flag, src_data):
+    #    return ({}, {})
 
 # abstract
 class ListHandler(Handler):
-    def do_get(self, src_data):
-        items = self._list()
-        if not isinstance(src_data, dict) or len(src_data) == 0:
-            result = {}
-            for elem in items:
-                result[elem] = {}
-            result["*"] = None
-        else:
-            result = {}
-            for name, src_data2 in src_data.items():
-                if name == "*":
-                    for name in items:
-                        if not name in src_data:
-                            result[name] = {}
-                    result[name] = None
-                elif name in items:
-                    result[name] = self.child_handler(name).do_get(src_data2)
-                else:
-                    result[name] = None
-        return result
+    def do_get(self, src_data, thats_all_flag):
+        return action_lib.encode_for_get_list(
+            src_data, thats_all_flag, [],
+            lambda: self._list(),
+            lambda name, src_data: self.child_handler(name).do_get(src_data, thats_all_flag),
+        )
 
     def do_put(self, confirmation_flag, src_data):
         if src_data == None:
-            return self.do_delete(confirmation_flag)
-        if not isinstance(src_data, dict):
-            return ({}, {})
-        if src_data == {}:
-            return ({}, {})
-        items = self._list()
-        result1 = {}
-        result2 = {}
-        delete_flag = False
-        for name in src_data:
+            src_data = {"*": None}
+        elif not isinstance(src_data, dict):
+            src_data = {}
+        result1 = {} # 入力または変更後のクラウド
+        result2 = {} # 変更前のクラウド
+        for name, value in src_data.items():
             if name == "*":
-                if src_data[name] == None:
-                    delete_flag = True
-                continue
-            if name in items:
-                d1, d2 = self.child_handler(name).do_put(confirmation_flag, src_data[name])
+                if value == None:
+                    for name2 in self._list():
+                        if not name2 in src_data:
+                            d1, d2 = self.child_handler(name2).do_put(confirmation_flag, None)
+                            result1[name2] = None
+                            result2[name2] = d2
+            elif value == None:
+                curr_data = self.child_handler(name).do_get(None, False)
+                if curr_data != None:
+                    d1, d2 = self.child_handler(name).do_put(confirmation_flag, None)
+                    result1[name] = None
+                    result2[name] = d2
+            else:
+                d1, d2 = self.child_handler(name).do_put(confirmation_flag, value)
                 result1[name] = d1
                 result2[name] = d2
-            elif src_data[name] == None:
-                result1[name] = None
-                result2[name] = None
-            else:
-                d1 = self.child_handler(name).do_create(confirmation_flag, src_data[name])
-                result1[name] = d1
-                result2[name] = None
-        if delete_flag:
-            for name in items:
-                if not name in src_data:
-                    d1, d2 = self.child_handler(name).do_delete(confirmation_flag)
-                    result1[name] = d1
-                    result2[name] = d2
-        if confirmation_flag:
-            items2 = self._list()
-            for name in items:
-                if name in result1:
-                    if not name in items2:
-                        result1[name] = None
-        else:
-            for name in items:
-                if name in result1:
-                    if delete_flag and not name in src_data:
-                        result1[name] = None
-                    elif name in src_data and src_data[name] == None:
-                        result1[name] = None
-        return (result1, result2)
-
-    def do_create(self, confirmation_flag, src_data):
-        result = {}
-        for name in src_data:
-            if name == "*":
-                continue
-            result[name] = self.child_handler(name).do_create(confirmation_flag, src_data[name])
-        if confirmation_flag:
-            items = self._list()
-            for name in result:
-                if not name in items:
-                    result[name] = None
-        return result
-
-    def do_delete(self, confirmation_flag):
-        items = self._list()
-        result1 = {}
-        result2 = {}
-        for name in items:
-            if name == "*":
-                continue
-            d1, d2 = self.child_handler(name).do_delete(confirmation_flag)
-            result1[name] = d1
-            result2[name] = d2
-        if confirmation_flag:
-            items = self._list()
-            for name in result1:
-                if not name in items:
-                    result1[name] = None
-        else:
-            for name in result1:
-                result1[name] = None
         return (result1, result2)
 
     def _list(self):
@@ -139,93 +63,138 @@ class ListHandler(Handler):
     def list(self):
         raise Exception(f"list method not implemented: {self}")
 
-    # abstract
+    @abstractmethod
     def child_handler(self, name):
         return Handler()
 
     def sort_items(self, list):
         return sorted(list)
 
-# abstract
-class ResourceHandler(Handler):
-    def do_get(self, src_data):
-        curr_data = sic_lib.skwadondict_encode(self.describe())
-        def build_result_data(src_data, curr_data):
-            if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
-                return curr_data
-            if len(src_data) == 0:
-                return sic_lib.skwadondict_encode(curr_data)
-            result = {}
-            for name in src_data:
-                if name == "*":
-                    for name in curr_data:
-                        if not name in src_data:
-                            result[name] = sic_lib.skwadondict_encode(curr_data[name])
-                    result[name] = None
-                elif name in curr_data:
-                    result[name] = build_result_data(src_data[name], curr_data[name])
-                else:
-                    result[name] = None
-            return result
-        return build_result_data(src_data, curr_data)
+class NamespaceHandler(Handler):
+    def __init__(self, conf_key, default_keys, path_map):
+        self.conf_key = conf_key
+        self.default_keys = default_keys
+        handler_map = {}
+        for path, handler in path_map.items():
+            p = path.find(".")
+            if p < 0:
+                h = path
+                t = ""
+            else:
+                h = path[0:p]
+                t = path[p+1:]
+            if not h in handler_map:
+                handler_map[h] = {}
+            handler_map[h][t] = handler
+        self.handler_map = {}
+        for key, map in handler_map.items():
+            if "" in map:
+                self.handler_map[key] = map[""]
+            else:
+                self.handler_map[key] = NamespaceHandler(None, [], map)
+
+    def do_get(self, src_data, thats_all_flag):
+        if self.conf_key:
+            conf = self.handler_map[self.conf_key].do_get(None, False)
+            if conf == None:
+                return None
+        result = action_lib.encode_for_get_list(
+            src_data, thats_all_flag, self.default_keys,
+            lambda: self.handler_map.keys(),
+            lambda name, src_data: self.handler_map[name].do_get(src_data, thats_all_flag),
+        )
+        return result
 
     def do_put(self, confirmation_flag, src_data):
+        if self.conf_key:
+            conf = self.handler_map[self.conf_key].do_get(None, False)
+            if conf == None:
+                if src_data == None:
+                    return (None, None)
         if src_data == None:
-            return self.do_delete(confirmation_flag)
-        if src_data == {}:
-            return ({}, {})
-        curr_data = sic_lib.skwadondict_encode(self.describe())
+            src_data = {"*": None}
+        elif not isinstance(src_data, dict):
+            src_data = {}
+        result1 = {} # 入力または変更後のクラウド
+        result2 = {} # 変更前のクラウド
+        for name, value in src_data.items():
+            if name == "*":
+                if value == None:
+                    result2r = {}
+                    for name2 in reversed(self.handler_map.keys()):
+                        if not name2 in src_data:
+                            d1, d2 = self.handler_map[name2].do_put(confirmation_flag, None)
+                            result2r[name2] = d2
+                    for name2 in reversed(result2r.keys()):
+                        result1[name2] = None
+                        result2[name2] = result2r[name2]
+                result1[name] = value
+            elif value == None:
+                if name in self.handler_map:
+                    d1, d2 = self.handler_map[name].do_put(confirmation_flag, None)
+                    result1[name] = None
+                    result2[name] = d2
+            else:
+                if name in self.handler_map:
+                    d1, d2 = self.handler_map[name].do_put(confirmation_flag, value)
+                    result1[name] = d1
+                    result2[name] = d2
+        return (result1, result2)
+
+# abstract
+class ResourceHandler(Handler):
+    def do_get(self, src_data, thats_all_flag):
+        curr_data = self.describe()
+        return action_lib.encode_for_get_resource2(src_data, curr_data, thats_all_flag)
+
+    def do_put(self, confirmation_flag, src_data):
+        curr_data = self.describe()
+
+        # 1つ目の返り値: 実際に self.updateに渡す値
+        # 2つ目の返り値: コマンドの出力結果としての入力
+        # 3つ目の返り値: コマンドの出力結果としての変更前のクラウド
         def build_update_data(src_data, curr_data):
             if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
-                return (src_data, curr_data)
-            src_data2 = {}
-            curr_data2 = {}
+                return (action_lib.decode_for_put(src_data), src_data, action_lib.encode_for_get_resource(curr_data))
+            src_data2 = {} # 実際に self.updateに渡す値
+            result1 = {}
+            result2 = {}
             delete_flag = False
-            for name in src_data:
+            for name, value in src_data.items():
                 if name == "*":
-                    if src_data[name] == None:
+                    if value == None:
+                        for name2 in curr_data:
+                            if not name2 in src_data:
+                                result2[name2] = action_lib.encode_for_get_resource(curr_data[name2])
                         delete_flag = True
-                    src_data2["*"] = None
-                    curr_data2["*"] = None
-                    continue
-                if name in curr_data:
-                    src_data2[name], curr_data2[name] = build_update_data(src_data[name], curr_data[name])
+                elif value == None:
+                    if name in curr_data:
+                        result2[name] = action_lib.encode_for_get_resource(curr_data[name])
                 else:
-                    src_data2[name] = src_data[name]
-            for name in curr_data:
-                if name == "*":
-                    continue
-                if not name in src_data2:
-                    curr_data2[name] = curr_data[name]
-                    if not delete_flag:
-                        src_data2[name] = curr_data[name]
-            src_data2["*"] = None
-            curr_data2["*"] = None
-            # src_data2: 実際に self.update に渡す値
-            # curr_data2: コマンドの出力結果としての現在の値
-            return (src_data2, curr_data2)
-        src_data2, curr_data2 = build_update_data(src_data, curr_data)
+                    if name in curr_data:
+                        src_data2[name], result1[name], result2[name] = build_update_data(value, curr_data[name])
+                    else:
+                        src_data2[name], result1[name], _ = build_update_data(value, None)
+            if not delete_flag:
+                for name in curr_data:
+                    if not name in src_data2:
+                        src_data2[name] = action_lib.encode_for_get_resource(curr_data[name])
+            return (src_data2, result1, result2)
+
+        src_data2, result1, result2 = build_update_data(src_data, curr_data)
         if src_data2 == curr_data:
-            return (src_data, curr_data2)
-        self.update(confirmation_flag, sic_lib.skwadondict_decode(src_data2), curr_data)
-        if confirmation_flag:
-            _, curr_data3 = build_update_data(src_data, sic_lib.skwadondict_encode(self.describe()))
-            return (curr_data3, curr_data2)
+            return (result1, result2)
+
+        if curr_data == None:
+            self.create(confirmation_flag, src_data2)
+        elif src_data == None:
+            self.delete(confirmation_flag, curr_data)
         else:
-            return (src_data, curr_data2)
+            self.update(confirmation_flag, src_data2, curr_data)
 
-    def do_create(self, confirmation_flag, src_data):
-        self.create(confirmation_flag, sic_lib.skwadondict_decode(src_data))
-        if not confirmation_flag:
-            return src_data
-        new_data = sic_lib.skwadondict_encode(self.describe())
-        return new_data
+        if confirmation_flag:
+            _, _, result1 = build_update_data(src_data, self.describe())
 
-    def do_delete(self, confirmation_flag):
-        curr_data = sic_lib.skwadondict_encode(self.describe())
-        result1 = {}
-        result2 = curr_data
-        self.delete(confirmation_flag, curr_data)
         return (result1, result2)
 
     @abstractmethod
@@ -248,85 +217,3 @@ class ResourceHandler(Handler):
     def delete(self, confirmation_flag, curr_data):
         raise Exception(f"delete method not implemented: {self}")
 
-class NamespaceHandler(Handler):
-    def __init__(self, path_map):
-        handler_map = {}
-        for path, handler in path_map.items():
-            p = path.find(".")
-            if p < 0:
-                h = path
-                t = ""
-            else:
-                h = path[0:p]
-                t = path[p+1:]
-            if not h in handler_map:
-                handler_map[h] = {}
-            handler_map[h][t] = handler
-        self.handler_map = {}
-        for key, map in handler_map.items():
-            if "" in map:
-                self.handler_map[key] = map[""]
-            else:
-                self.handler_map[key] = NamespaceHandler(map)
-
-    def do_get(self, src_data):
-        if not isinstance(src_data, dict) or len(src_data) == 0:
-            result = {}
-            for name in self.handler_map:
-                result[name] = {}
-        else:
-            result = {}
-            for name in src_data:
-                if name == "*":
-                    for name in self.handler_map:
-                        if not name in src_data:
-                            result[name] = {}
-                elif name in self.handler_map:
-                    result[name] = self.handler_map[name].do_get(src_data[name])
-                else:
-                    result[name] = None
-        return result
-
-    def do_put(self, confirmation_flag, src_data):
-        if src_data == None:
-            return self.do_delete(confirmation_flag)
-        if not isinstance(src_data, dict):
-            result1 = {}
-            result2 = {}
-        else:
-            result1 = {}
-            result2 = {}
-            for name in src_data:
-                if name == "*":
-                    continue
-                if name in self.handler_map:
-                    d1, d2 = self.handler_map[name].do_put(confirmation_flag, src_data[name])
-                    result1[name] = d1
-                    result2[name] = d2
-        return (result1, result2)
-
-    def do_create(self, confirmation_flag, src_data):
-        if not isinstance(src_data, dict):
-            result = {}
-        else:
-            result = {}
-            for name in src_data:
-                if name == "*":
-                    continue
-                if name in self.handler_map:
-                    result[name] = self.handler_map[name].do_create(confirmation_flag, src_data[name])
-        return result
-
-    def do_delete(self, confirmation_flag):
-        result1 = {}
-        result2 = {}
-        for name in reversed(self.handler_map.keys()):
-            d1, d2 = self.handler_map[name].do_delete(confirmation_flag)
-            result1[name] = d1
-            result2[name] = d2
-        result1r = {}
-        result2r = {}
-        for name in self.handler_map.keys():
-            result1r[name] = result1[name]
-            result2r[name] = result2[name]
-        return (result1r, result2r)

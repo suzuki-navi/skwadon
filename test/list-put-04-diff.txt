@@ -1,0 +1,44 @@
+$ pipenv run skwadon testcloud seeds -s var/input.txt put --diff
+
+< himawari2:
+<   conf:
+<     Description: test
+<     Count: 30
+< himawari4:
+<   conf:
+<     Description: test
+<     Count: 40
+
+> TESTCLOUD: update conf, confirmation_flag = False
+> src_data:
+>   Description: test
+>   Count: 30
+>   Color:
+>     r: 30
+>     g: 20
+>     b: 15
+> curr_data:
+>   Description: himawari no tane 'himawari2'
+>   Count: 10
+>   Color:
+>     r: 30
+>     g: 20
+>     b: 15
+> testcloud: api: update conf
+> TESTCLOUD: create conf, confirmation_flag = False
+> src_data:
+>   Description: test
+>   Count: 40
+> testcloud: api: create conf
+> @@ -1,6 +1,8 @@
+>  himawari2:
+>    conf:
+> -    Description: himawari no tane 'himawari2'
+> -    Count: 10
+> +    Description: test
+> +    Count: 30
+>  himawari4:
+> -  conf: null
+> +  conf:
+> +    Description: test
+> +    Count: 40

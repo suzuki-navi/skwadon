@@ -1,0 +1,5 @@
+$ pipenv run skwadon testcloud seeds -s var/input.txt put --diff
+
+< himawari1: {}
+< himawari2: {}
+< himawari4: {}

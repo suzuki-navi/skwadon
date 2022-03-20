@@ -1,5 +1,7 @@
 import json
 
+import botocore
+
 import skwadon.main as sic_main
 import skwadon.lib as sic_lib
 import skwadon.common_action as common_action
@@ -8,9 +10,14 @@ import skwadon.aws as sic_aws
 class StateMachineListHandler(common_action.ListHandler):
     def __init__(self, session):
         self.session = session
+        self.stepfunctions_client = None
+
+    def init_client(self):
+        if self.stepfunctions_client == None:
+            self.stepfunctions_client = self.session.client("stepfunctions")
 
     def list(self):
-        self.stepfunctions_client = self.session.client("stepfunctions")
+        self.init_client()
         account_id = sic_aws.fetch_account_id(self.session)
         region_name = sic_aws.fetch_region_name(self.session)
         result = []
@@ -27,7 +34,9 @@ class StateMachineListHandler(common_action.ListHandler):
         return result
 
     def child_handler(self, name):
-        return common_action.NamespaceHandler({
+        self.init_client()
+        return common_action.NamespaceHandler(
+            "conf", ["conf", "definition"], {
             "conf": StateMachineConfHandler(self.session, self.stepfunctions_client, name),
             "definition": StateMachineDefinitionHandler(self.session, self.stepfunctions_client, name),
         })
@@ -41,15 +50,21 @@ class StateMachineBasicHandler(common_action.ResourceHandler):
         self.info = None
 
     def _describe(self):
-        if self.info != None:
+        if self.arn != None:
             return self.info
         if self.arn == None:
             arn = self._calc_statemachine_arn()
-        res = self.stepfunctions_client.describe_state_machine(stateMachineArn = arn)
-        curr_data = sic_lib.dict_key_capitalize(res)
-        curr_data = sic_lib.pickup(curr_data, self._properties)
-        self.info = curr_data
-        return self.info
+        try:
+            res = self.stepfunctions_client.describe_state_machine(stateMachineArn = arn)
+            curr_data = sic_lib.dict_key_capitalize(res)
+            curr_data = sic_lib.pickup(curr_data, self._properties)
+            self.info = curr_data
+            return self.info
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "StateMachineDoesNotExist":
+                return None
+            else:
+                raise
 
     def _update(self, confirmation_flag, src_data):
         curr_data = self._describe()
@@ -95,7 +110,10 @@ class StateMachineConfHandler(StateMachineBasicHandler):
         StateMachineBasicHandler.__init__(self, session, stepfunctions_client, machine_name)
 
     def describe(self):
-        curr_data = sic_lib.pickup(self._describe(), self.properties)
+        info = self._describe()
+        if info == None:
+            return None
+        curr_data = sic_lib.pickup(info, self.properties)
         return curr_data
 
     def update(self, confirmation_flag, src_data, curr_data):
@@ -121,6 +139,8 @@ class StateMachineDefinitionHandler(StateMachineBasicHandler):
 
     def describe(self):
         info = self._describe()
+        if info == None:
+            return None
         return self._definition_str_to_dict(info["Definition"])
 
     def update(self, confirmation_flag, src_data, curr_data):

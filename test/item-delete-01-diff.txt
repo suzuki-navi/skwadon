@@ -1,0 +1,27 @@
+$ pipenv run skwadon testcloud seeds.himawari1 delete --diff
+
+> TESTCLOUD: delete status, confirmation_flag = False
+> curr_data:
+>   status: OK
+> testcloud: api: delete status
+> TESTCLOUD: delete, confirmation_flag = False
+> curr_data:
+>   Description: himawari no tane 'himawari1'
+>   Count: 10
+>   Color:
+>     r: 30
+>     g: 20
+>     b: 15
+> testcloud: api: delete conf
+> @@ -1,9 +1,2 @@
+> -conf:
+> -  Description: himawari no tane 'himawari1'
+> -  Count: 10
+> -  Color:
+> -    r: 30
+> -    g: 20
+> -    b: 15
+> -status:
+> -  status: OK
+> +null
+> +...
