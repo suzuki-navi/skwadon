@@ -62,6 +62,33 @@ class DatabaseConfHandler(common_action.ResourceHandler):
             else:
                 raise
 
+    def create(self, confirmation_flag, src_data):
+        update_data = copy.copy(src_data)
+        update_data["Name"] = self.database_name
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.create_database(DatabaseInput = {{Name: {self.database_name}, ...}})",
+            lambda:
+                self.glue_client.create_database(DatabaseInput = update_data)
+        )
+
+    def update(self, confirmation_flag, src_data, curr_data):
+        update_data = copy.copy(src_data)
+        update_data["Name"] = self.database_name
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.update_database(Name = {self.database_name}, TableInput = {{Name: {self.database_name}, ...}})",
+            lambda:
+                self.glue_client.update_database(Name = self.database_name,
+                DatabaseInput = update_data)
+        )
+
+    def delete(self, confirmation_flag, curr_data):
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.delete_database(Name = {self.database_name})",
+            lambda:
+                self.glue_client.delete_database(Name = self.database_name)
+        )
+        self.described = False
+
 class TableListHandler(common_action.ListHandler):
     def __init__(self, glue_client, database_name):
         self.glue_client = glue_client
@@ -107,11 +134,19 @@ class TableInfo:
         self.database_name = database_name
         self.table_name = table_name
         self.info = None
+        self.described = False
 
     def describe(self):
-        if self.info == None:
-            res = self.glue_client.get_table(DatabaseName = self.database_name, Name = self.table_name)
-            self.info = sic_lib.pickup(res["Table"], self.properties)
+        if not self.described:
+            try:
+                res = self.glue_client.get_table(DatabaseName = self.database_name, Name = self.table_name)
+                self.info = sic_lib.pickup(res["Table"], self.properties)
+            except botocore.exceptions.ClientError as e:
+                if e.response["Error"]["Code"] == "EntityNotFoundException":
+                    self.info = None
+                else:
+                    raise
+            self.described = True
         return self.info
 
     def create(self, confirmation_flag, src_data):
@@ -123,6 +158,7 @@ class TableInfo:
                 self.glue_client.create_table(DatabaseName = self.database_name,
                 TableInput = update_data)
         )
+        self.described = False
 
     def update(self, confirmation_flag, src_data):
         if src_data == self.describe():
@@ -135,6 +171,17 @@ class TableInfo:
                 self.glue_client.update_table(DatabaseName = self.database_name,
                 TableInput = update_data)
         )
+        self.described = False
+
+    def delete(self, confirmation_flag):
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.delete_table(DatabaseName = {self.database_name}, Name = {self.table_name})",
+            lambda:
+                self.glue_client.delete_table(
+                    DatabaseName = self.database_name,
+                    Name = self.table_name)
+        )
+        self.described = False
 
 class TableConfHandler(common_action.ResourceHandler):
 
@@ -143,6 +190,8 @@ class TableConfHandler(common_action.ResourceHandler):
 
     def describe(self):
         info = self.info.describe()
+        if info == None:
+            return None
         curr_data = copy.copy(info)
         curr_data["StorageDescriptor"] = copy.copy(curr_data["StorageDescriptor"])
         sic_lib.removeKey(curr_data["StorageDescriptor"], "Columns")
@@ -160,6 +209,9 @@ class TableConfHandler(common_action.ResourceHandler):
         update_data["StorageDescriptor"]["Columns"] = info["StorageDescriptor"]["Columns"]
         self.info.update(confirmation_flag, update_data)
 
+    def delete(self, confirmation_flag, curr_data):
+        self.info.delete(confirmation_flag)
+
 class TableColumnsHandler(common_action.ResourceHandler):
 
     def __init__(self, info: TableInfo):
@@ -167,6 +219,8 @@ class TableColumnsHandler(common_action.ResourceHandler):
 
     def describe(self):
         info = self.info.describe()
+        if info == None:
+            return None
         curr_data = self._decode_columns(info["StorageDescriptor"]["Columns"])
         return curr_data
 
@@ -182,6 +236,9 @@ class TableColumnsHandler(common_action.ResourceHandler):
         info["StorageDescriptor"] = copy.copy(info["StorageDescriptor"])
         info["StorageDescriptor"]["Columns"] = self._encode_columns(src_data)
         self.info.update(confirmation_flag, info)
+
+    def delete(self, confirmation_flag, curr_data):
+        pass
 
     def _decode_columns(self, info):
         data = {}
