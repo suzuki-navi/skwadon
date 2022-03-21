@@ -116,6 +116,8 @@ class JobSourceHandler(common_action.ResourceHandler):
 
     def describe(self):
         conf = self.conf_handler.describe()
+        if conf == None:
+            return None
         script_s3_path = conf["Command"]["ScriptLocation"]
         script_source = self._fetch_script_source(script_s3_path)
         return script_source
