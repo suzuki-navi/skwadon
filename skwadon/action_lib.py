@@ -28,8 +28,6 @@ def encode_for_get_resource(data):
 
 def encode_for_get_resource2(src_data, curr_data, thats_all_flag):
     if not isinstance(curr_data, dict):
-        if isinstance(curr_data, str) and curr_data.startswith("$"):
-            curr_data = "$" + curr_data
         return curr_data
     if not isinstance(src_data, dict):
         src_data = {"*": None}
