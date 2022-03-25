@@ -7,3 +7,5 @@ Pipfile*
 /build/
 
 /var
+
+.venv/

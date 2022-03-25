@@ -25,7 +25,7 @@ def get_message_prefix(data):
     ret = f"aws(proifle={profile}"
     if "region" in data:
         region = data["region"]
-        ret = ret + ", region={region}"
+        ret = ret + f", region={region}"
     ret = ret + ")"
     return ret
 
