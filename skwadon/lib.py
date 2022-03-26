@@ -64,6 +64,8 @@ def random_string(length):
     return ''.join([random.choice(chars) for i in range(length)])
 
 def pickup(src_data, keys):
+    if src_data is None:
+        return None
     src_data2 = {}
     for key in keys:
         if dictlib_in(src_data, key):

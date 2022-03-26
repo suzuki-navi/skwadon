@@ -14,6 +14,8 @@ import skwadon.action_lib as action_lib
 # ResourceHandler
 #   リソースの実際の属性値などを表現する階層
 #   AWSの各サービスでこのクラスのサブクラスを実装する
+# ResourceInfoHandler
+#   describeのみを実装しているResourceHandlerのサブクラス
 
 
 class Handler:
@@ -232,4 +234,12 @@ class ResourceHandler(Handler):
     def delete(self, confirmation_flag, curr_data):
         raise Exception(f"delete method not implemented: {self}")
 
+
+class ResourceInfoHandler(ResourceHandler):
+
+    def __init__(self, info):
+        self.info = info
+
+    def describe(self):
+        return self.info
 
