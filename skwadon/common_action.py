@@ -1,24 +1,36 @@
 from abc import abstractmethod
-import copy
-import re
-from termios import TIOCPKT_DOSTOP
 
-import skwadon.main as sic_main
-import skwadon.lib as sic_lib
 import skwadon.action_lib as action_lib
+
+# Handlerは各階層でのdo_get, do_putを実装するクラス
+# このファイルではHandlerのほかにHandlerのサブクラスを定義している
+#
+# ListHandler
+#   リソースの一覧を表現する階層
+#   AWSの各サービスでのリソース一覧はこのクラスのサブクラスを実装する
+# NamespaceHandler
+#   名前を区切っているだけの階層
+#   サブクラスを実装することなくAWSの各サービスで直接インスタンスを生成する
+# ResourceHandler
+#   リソースの実際の属性値などを表現する階層
+#   AWSの各サービスでこのクラスのサブクラスを実装する
+
 
 class Handler:
 
+    # getアクションを実装
     @abstractmethod
     def do_get(self, src_data, thats_all_flag):
         return {}
 
+    # putアクションを実装 (deleteアクションを含む)
     # 返り値
     #   dryrun(confirmation_flag=False): (入力, 変更前のクラウド)
     #   更新実行(confirmation_flag=True): (変更後のクラウド, 変更前のクラウド)
-    #@abstractmethod
-    #def do_put(self, confirmation_flag, src_data):
-    #    return ({}, {})
+    @abstractmethod
+    def do_put(self, confirmation_flag, src_data):
+        return ({}, {})
+
 
 # abstract
 class ListHandler(Handler):
@@ -30,22 +42,22 @@ class ListHandler(Handler):
         )
 
     def do_put(self, confirmation_flag, src_data):
-        if src_data == None:
+        if src_data is None:
             src_data = {"*": None}
         elif not isinstance(src_data, dict):
             src_data = {}
-        result1 = {} # 入力または変更後のクラウド
-        result2 = {} # 変更前のクラウド
+        result1 = {}  # 入力または変更後のクラウド
+        result2 = {}  # 変更前のクラウド
         for name, value in src_data.items():
             if name == "*":
                 for name2 in self._list():
-                    if not name2 in src_data:
+                    if name2 not in src_data:
                         d1, d2 = self.child_handler(name2).do_put(confirmation_flag, None)
                         result1[name2] = None
                         result2[name2] = d2
-            elif value == None:
+            elif value is None:
                 curr_data = self.child_handler(name).do_get(None, False)
-                if curr_data != None:
+                if curr_data is not None:
                     d1, d2 = self.child_handler(name).do_put(confirmation_flag, None)
                     result1[name] = None
                     result2[name] = d2
@@ -69,6 +81,7 @@ class ListHandler(Handler):
     def sort_items(self, list):
         return sorted(list)
 
+
 class NamespaceHandler(Handler):
     def __init__(self, conf_key, default_keys, path_map):
         self.conf_key = conf_key
@@ -82,7 +95,7 @@ class NamespaceHandler(Handler):
             else:
                 h = path[0:p]
                 t = path[p+1:]
-            if not h in handler_map:
+            if h not in handler_map:
                 handler_map[h] = {}
             handler_map[h][t] = handler
         self.handler_map = {}
@@ -95,7 +108,7 @@ class NamespaceHandler(Handler):
     def do_get(self, src_data, thats_all_flag):
         if self.conf_key:
             conf = self.handler_map[self.conf_key].do_get(None, False)
-            if conf == None:
+            if conf is None:
                 return None
         result = action_lib.encode_for_get_list(
             src_data, thats_all_flag, self.default_keys,
@@ -107,28 +120,28 @@ class NamespaceHandler(Handler):
     def do_put(self, confirmation_flag, src_data):
         if self.conf_key:
             conf = self.handler_map[self.conf_key].do_get(None, False)
-            if conf == None:
-                if src_data == None:
+            if conf is None:
+                if src_data is None:
                     return (None, None)
-        if src_data == None:
+        if src_data is None:
             src_data = {"*": None}
         elif not isinstance(src_data, dict):
             src_data = {}
-        result1 = {} # 入力または変更後のクラウド
-        result2 = {} # 変更前のクラウド
+        result1 = {}  # 入力または変更後のクラウド
+        result2 = {}  # 変更前のクラウド
         for name, value in src_data.items():
             if name == "*":
-                if value == None:
+                if value is None:
                     result2r = {}
                     for name2 in reversed(self.handler_map.keys()):
-                        if not name2 in src_data:
+                        if name2 not in src_data:
                             d1, d2 = self.handler_map[name2].do_put(confirmation_flag, None)
                             result2r[name2] = d2
                     for name2 in reversed(result2r.keys()):
                         result1[name2] = None
                         result2[name2] = result2r[name2]
                 result1[name] = value
-            elif value == None:
+            elif value is None:
                 if name in self.handler_map:
                     d1, d2 = self.handler_map[name].do_put(confirmation_flag, None)
                     result1[name] = None
@@ -139,6 +152,7 @@ class NamespaceHandler(Handler):
                     result1[name] = d1
                     result2[name] = d2
         return (result1, result2)
+
 
 # abstract
 class ResourceHandler(Handler):
@@ -154,19 +168,21 @@ class ResourceHandler(Handler):
         # 3つ目の返り値: コマンドの出力結果としての変更前のクラウド
         def build_update_data(src_data, curr_data):
             if not isinstance(src_data, dict) or not isinstance(curr_data, dict):
-                return (action_lib.decode_for_put(src_data), src_data, action_lib.encode_for_get_resource(curr_data))
-            src_data2 = {} # 実際に self.updateに渡す値
+                src_data2 = action_lib.decode_for_put(src_data)
+                result2 = action_lib.encode_for_get_resource(curr_data)
+                return (src_data2, src_data, result2)
+            src_data2 = {}  # 実際に self.updateに渡す値
             result1 = {}
             result2 = {}
             delete_flag = False
             for name, value in src_data.items():
                 if name == "*":
-                    if value == None:
+                    if value is None:
                         for name2 in curr_data:
-                            if not name2 in src_data:
+                            if name2 not in src_data:
                                 result2[name2] = action_lib.encode_for_get_resource(curr_data[name2])
                         delete_flag = True
-                elif value == None:
+                elif value is None:
                     if name in curr_data:
                         result2[name] = action_lib.encode_for_get_resource(curr_data[name])
                 else:
@@ -176,7 +192,7 @@ class ResourceHandler(Handler):
                         src_data2[name], result1[name], _ = build_update_data(value, None)
             if not delete_flag:
                 for name in curr_data:
-                    if not name in src_data2:
+                    if name not in src_data2:
                         src_data2[name] = action_lib.encode_for_get_resource(curr_data[name])
             return (src_data2, result1, result2)
 
@@ -184,9 +200,9 @@ class ResourceHandler(Handler):
         if src_data2 == curr_data:
             return (result1, result2)
 
-        if curr_data == None:
+        if curr_data is None:
             self.create(confirmation_flag, src_data2)
-        elif src_data == None:
+        elif src_data is None:
             self.delete(confirmation_flag, curr_data)
         else:
             self.update(confirmation_flag, src_data2, curr_data)
@@ -215,4 +231,5 @@ class ResourceHandler(Handler):
     @abstractmethod
     def delete(self, confirmation_flag, curr_data):
         raise Exception(f"delete method not implemented: {self}")
+
 
