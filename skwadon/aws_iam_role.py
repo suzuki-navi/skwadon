@@ -55,11 +55,9 @@ class RoleConfHandler(common_action.ResourceHandler):
                 raise
 
     def create(self, confirmation_flag, src_data):
-        update_data = {}
+        update_data = sic_lib.pickup(src_data, ["Description", "MaxSessionDuration"])
         update_data["RoleName"] = self.role_name
         update_data["AssumeRolePolicyDocument"] = json.dumps(self._defaultAssumeRole())
-        update_data["Description"] = src_data["Description"]
-        update_data["MaxSessionDuration"] = src_data["MaxSessionDuration"]
         sic_main.exec_put(confirmation_flag,
             f"iam_client.create_role(RoleName = {self.role_name}, ...)",
             lambda: self.iam_client.create_role(**update_data)
