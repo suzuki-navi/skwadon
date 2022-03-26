@@ -44,7 +44,9 @@ def encode_for_get_resource2(src_data, curr_data, thats_all_flag):
             result[name] = encode_for_get_resource2(value, curr_data[name], thats_all_flag)
         else:
             pass
-    if unknown_flag and thats_all_flag:
+    # AccessDeniedの場合は curr_data に {"*": "AccessDenied"} が来る
+    # その場合は thats_all_flag があっても {"*": null} にしない
+    if unknown_flag and thats_all_flag and "*" not in curr_data:
         result["*"] = None
     return result
 

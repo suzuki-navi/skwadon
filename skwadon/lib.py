@@ -2,6 +2,7 @@ import os
 import random
 import sys
 import tempfile
+import urllib
 
 def removeKey(info: dict, key: str):
     if key in info:
@@ -131,3 +132,18 @@ def dict_key_capitalize(info):
         key2 = key[0:1].title() + key[1:]
         ret[key2] = value
     return ret
+
+def encode_key(key):
+    s = key
+    s = urllib.parse.quote(s)
+    s = s.replace(".", "%2E")
+    s = s.replace("~", "%7E")
+    return s
+
+def decode_key(key):
+    s = key
+    s = s.replace("%2E", ".")
+    s = s.replace("%7E", "~")
+    s = urllib.parse.unquote(s)
+    return s
+
