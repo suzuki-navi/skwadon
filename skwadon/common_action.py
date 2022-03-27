@@ -46,9 +46,14 @@ class Handler:
 
 # abstract
 class ListHandler(Handler):
+    
     def do_get(self, src_data, thats_all_flag):
+        if hasattr(self, "is_default_all") and self.is_default_all:
+            default_keys = None
+        else:
+            default_keys = []
         return action_lib.encode_for_get_list(
-            src_data, thats_all_flag, [],
+            src_data, thats_all_flag, default_keys,
             lambda: self._list(),
             lambda name, src_data: self.child_handler(name).do_get(src_data, thats_all_flag),
         )

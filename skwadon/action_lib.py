@@ -1,5 +1,5 @@
 
-def encode_for_get_list(src_data, thats_all_flag, default_keys, items_fetcher, item_handler):
+def encode_for_get_list(src_data, thats_all_flag, default_keys, items_fetcher, item_detail_fetcher):
     if not isinstance(src_data, dict):
         src_data = {"*": None}
     result = {}
@@ -9,14 +9,14 @@ def encode_for_get_list(src_data, thats_all_flag, default_keys, items_fetcher, i
             for name2 in items_fetcher():
                 if not name2 in src_data:
                     if value != None and value != {}:
-                        result[name2] = item_handler(name2, value)
-                    elif value == None and name2 in default_keys:
-                        result[name2] = item_handler(name2, None)
+                        result[name2] = item_detail_fetcher(name2, value)
+                    elif value == None and (default_keys is None or name2 in default_keys):
+                        result[name2] = item_detail_fetcher(name2, None)
                     else:
                         result[name2] = {}
             unknown_flag = True
         else:
-            d = item_handler(name, value)
+            d = item_detail_fetcher(name, value)
             if d != None:
                 result[name] = d
     if unknown_flag and thats_all_flag:

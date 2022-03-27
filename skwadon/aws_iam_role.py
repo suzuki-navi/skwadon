@@ -96,6 +96,7 @@ class RoleConfHandler(common_action.ResourceHandler):
 
 class RoleInlinePolicyListHandler(common_action.ListHandler):
     def __init__(self, iam_client, role_name):
+        self.is_default_all = True
         self.iam_client = iam_client
         self.role_name = role_name
 
