@@ -46,7 +46,7 @@ class Handler:
 
 # abstract
 class ListHandler(Handler):
-    
+
     def do_get(self, src_data, thats_all_flag):
         if hasattr(self, "is_default_all") and self.is_default_all:
             default_keys = None

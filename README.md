@@ -60,9 +60,9 @@ assumeRolePolicyを編集する
 - `s3.buckets.*.lifecyles`
     - describe, create, update, delete
 - `lambda.functions.*.conf`
-    - describe
+    - describe, create, update
 - `lambda.functions.*.sources`
-    - describe
+    - describe, create, update
 - `stepfunctions.stateMachines.*.conf`
     - describe, update
 - `stepfunctions.stateMachines.*.definition`

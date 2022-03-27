@@ -60,6 +60,17 @@ def script_sources_to_yaml(script_dir):
                 result[file_name] = normalize_script_source(fh.read())
     return result
 
+def script_sources_from_yaml(script_dir, sources):
+    for name, data in sources.items():
+        path = script_dir + "/" + name
+        if isinstance(data, dict):
+            if not os.path.exists(path):
+                os.makedirs(path)
+            script_sources_from_yaml(path, data)
+        else:
+            with open(path, "w") as fh:
+                fh.write(data)
+
 def random_string(length):
     chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     return ''.join([random.choice(chars) for i in range(length)])

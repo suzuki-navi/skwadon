@@ -1,6 +1,7 @@
 import copy
 import shutil
 import tempfile
+import time
 import urllib.request
 
 import botocore.exceptions
@@ -77,6 +78,26 @@ class FunctionConfHandler(common_action.ResourceHandler):
             else:
                 raise
 
+    def create(self, confirmation_flag, src_data):
+        update_data = src_data.copy()
+        update_data["FunctionName"] = self.function_name
+        update_data["Code"] = {"ZipFile": create_zip({"__skwadon_dummy.txt": "dummy"})}
+        sic_main.exec_put(confirmation_flag,
+            f"lambda_client.create_function(FunctionName = {self.function_name}, ...)",
+            lambda: self.lambda_client.create_function(**update_data)
+        )
+
+    def update(self, confirmation_flag, src_data, curr_data):
+        update_data = src_data.copy()
+        update_data["FunctionName"] = self.function_name
+        sic_lib.removeKey(update_data, "PackageType")
+        sic_lib.removeKey(update_data, "Architectures")
+        sic_main.exec_put(confirmation_flag,
+            f"lambda_client.update_function_configuration(FunctionName = {self.function_name}, ...)",
+            lambda: self.lambda_client.update_function_configuration(**update_data)
+        )
+
+
 class FunctionSourcesHandler(common_action.ResourceHandler):
 
     def __init__(self, lambda_client, function_name):
@@ -84,7 +105,13 @@ class FunctionSourcesHandler(common_action.ResourceHandler):
         self.function_name = function_name
 
     def describe(self):
-        res = self.lambda_client.get_function(FunctionName = self.function_name)
+        try:
+            res = self.lambda_client.get_function(FunctionName = self.function_name)
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                return None
+            else:
+                raise
         result = {}
         if res["Configuration"]["PackageType"] == "Zip" and res["Code"]["RepositoryType"] == "S3":
             url = res["Code"]["Location"]
@@ -96,4 +123,36 @@ class FunctionSourcesHandler(common_action.ResourceHandler):
                     shutil.unpack_archive(tmp_file.name, tmp_dir, "zip")
                 result = sic_lib.script_sources_to_yaml(tmp_dir)
         return result
+
+    def put(self, confirmation_flag, src_data):
+        if confirmation_flag:
+            self.waitPending()
+        src_data2 = src_data.copy()
+        if "__skwadon_dummy.txt" in src_data2:
+            del src_data2["__skwadon_dummy.txt"]
+        zipbin = create_zip(src_data2)
+        update_data = {}
+        update_data["FunctionName"] = self.function_name
+        update_data["ZipFile"] = zipbin
+        sic_main.exec_put(confirmation_flag,
+            f"lambda_client.update_function_code(FunctionName = {self.function_name}, ...)",
+            lambda: self.lambda_client.update_function_code(**update_data)
+        )
+
+    def waitPending(self):
+        while True:
+            res = self.lambda_client.get_function(FunctionName = self.function_name)
+            if res["Configuration"]["State"] == "Pending":
+                time.sleep(1)
+            else:
+                break
+
+def create_zip(sources):
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        sic_lib.script_sources_from_yaml(tmp_dir, sources)
+        with tempfile.TemporaryDirectory() as tmp_dir2:
+            shutil.make_archive(tmp_dir2 + "/sources", "zip", tmp_dir)
+            with open(tmp_dir2 + "/sources.zip", "rb") as fh:
+                zipbin = fh.read()
+    return zipbin
 
