@@ -2,8 +2,18 @@ from abc import abstractmethod
 
 import skwadon.action_lib as action_lib
 
-# Handlerは各階層でのdo_get, do_putを実装するクラス
-# このファイルではHandlerのほかにHandlerのサブクラスを定義している
+# Handlerは各階層でのdo_get, do_putを実装するクラス。
+# 各階層ごとに再帰的に処理していく。
+#
+# 階層とは
+#   $ skwadon aws iam.roles.AWSServiceRoleForAPIGateway
+# と実行した場合
+#   - iam
+#   - iam.roles
+#   - iam.roles.AWSServiceRoleForAPIGateway
+#  の3階層。
+#
+# このファイルではHandlerのほかにHandlerのサブクラスを定義している。
 #
 # ListHandler
 #   リソースの一覧を表現する階層

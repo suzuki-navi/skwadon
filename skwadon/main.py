@@ -1,6 +1,5 @@
 import copy
 import datetime
-from re import S
 import sys
 import yaml
 
@@ -48,6 +47,7 @@ def parse_args():
         a = sys.argv[i]
         i = i + 1
         if a == "--help":
+            # ヘルプはまだ実装していない
             help_flag = True
         elif a == "-r":
             is_simple = True
@@ -90,24 +90,33 @@ def parse_args():
                 i = i + 1
         elif a.startswith("-"):
             raise Exception(f"Unknown option: {a}")
-        elif action == None and a == "get":
+
+        # actionはこの4種類
+        elif action is None and a == "get":
             action = "get"
-        elif action == None and a == "put":
+        elif action is None and a == "put":
             action = "put"
-        elif action == None and a == "delete":
+        elif action is None and a == "delete":
             action = "delete"
-        elif action == None and a == "exec":
+        elif action is None and a == "exec":
             action = "exec"
+
+        # クラウド種類はいまのところこの2種類
         elif a == "testcloud":
+            # skwadonテストコードのためのクラウド種類
             type = "testcloud"
         elif a == "aws":
+            # AWS
             type = "aws"
-        elif type and src_file == None:
+
+        elif type and src_file is None:
             path.append(a)
-        elif type == None and path == None and src_file == None:
+        elif type is None and path is None and src_file is None:
             src_file = a
+
         else:
             raise Exception(f"Unknown parameter: {a}")
+
     return (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
 
 ####################################################################################################
@@ -116,7 +125,7 @@ def parse_args():
 ####################################################################################################
 
 def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm):
-    if len(path) > 0 and type == None:
+    if len(path) > 0 and type is None:
         raise Exception("-p option needs aws parameter")
 
     # pathが . で終わっている場合はその次に続く文字列候補を出力する
@@ -146,52 +155,52 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, th
         raise Exception("exec action must have one path")
 
     # actionの指定がない場合は get とみなす
-    if action == None:
+    if action is None:
         action = "get"
-        if type == None and src_file == None:
+        if type is None and src_file is None:
             action = "cat"
 
     # is_diffの指定がない場合のデフォルト値設定
     if action == "get" or action == "cat":
-        if is_diff == None:
+        if is_diff is None:
             is_diff = False
     elif action == "put" or action == "delete":
         if is_diff and not is_dryrun and not confirm:
             # --diff が指定されていて --dry-run も --confirm もない場合は --dry-run とみなす
             is_dryrun = True
         if is_dryrun:
-            if is_diff == None:
+            if is_diff is None:
                 is_diff = True
         else:
             # put実行では差分表示もフル表示もしない
             pass
 
     if action == "delete":
-        if type == None:
+        if type is None:
             raise Exception(f"delete action needs aws parameter")
-        if src_file != None:
+        if src_file is not None:
             raise Exception(f"delete action must not have -s option")
         if len(path) == 0:
             raise Exception(f"delete action needs -p option")
 
     # 入力がない場合はエラー
-    if type == None and src_file == None and sys.stdin.isatty():
+    if type is None and src_file is None and sys.stdin.isatty():
         raise Exception(f"either aws parameter or -s must be expected")
 
     # ファイルでの入力の場合の出力は is_full のみ
-    if type == None:
+    if type is None:
         is_simple = False
         is_full = True
 
     if is_inplace:
-        if src_file == None:
+        if src_file is None:
             raise Exception("-i option needs -s option")
         if action != "get" and action != "cat":
             raise Exception(f"{action} must not have -i option")
         if is_diff:
             raise Exception(f"only one of --diff and -i can be specified")
 
-    if type != None:
+    if type is not None:
         path2 = []
         for p in path:
             if p == "":
@@ -200,7 +209,7 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, th
                 if p.endswith("."):
                     p = p[0:len(p)-1]
                 path2.append(p.split("."))
-        if len(path) == 0 and src_file == None:
+        if len(path) == 0 and src_file is None:
             path2.append([])
         path = path2
 
@@ -218,7 +227,7 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, tha
     if action == "put" or action == "delete":
         if not is_dryrun:
             # putコマンドでは --confirm オプションをチェック
-            if confirm == None:
+            if confirm is None:
                 hm = get_correct_confirm_parameter()
                 raise Exception(f"put action needs --dry-run or --confirm {hm}")
             if confirm != True:
@@ -226,7 +235,7 @@ def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, tha
             confirmation_flag = True
             global_confirmation_flag = True
 
-    if type != None:
+    if type is not None:
         # get aws -p ... < data.yml
         # put aws -p ... < data.yml
         # のパターン
@@ -369,12 +378,12 @@ def get_by_path(data, path):
     if "*" in path:
         return data
     def sub(data):
-        if path == None:
+        if path is None:
             result = data
         else:
             result = data["resources"]
             for elem in path:
-                if result == None:
+                if result is None:
                     return None
                 if not elem in result:
                     return None
@@ -413,7 +422,7 @@ def load_simple(src_file, default):
 ####################################################################################################
 
 def output_completion(result):
-    if result == None:
+    if result is None:
         pass
     elif isinstance(result, dict):
         max_len = 0
@@ -451,7 +460,7 @@ def output_completion(result):
                 print(name)
 
 def output_simple(result):
-    if result == None:
+    if result is None:
         pass
     elif isinstance(result, dict):
         is_simple = True

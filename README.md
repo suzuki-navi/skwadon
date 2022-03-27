@@ -57,6 +57,8 @@ assumeRolePolicyを編集する
     - describe
 - `s3.buckets.*.bucketPolicy`
     - describe
+- `s3.buckets.*.lifecyles`
+    - describe, create, update, delete
 - `lambda.functions.*.conf`
     - describe
 - `lambda.functions.*.sources`
@@ -85,9 +87,15 @@ assumeRolePolicyを編集する
     - describe, create, update
 - `glue.connections.*.connection`
     - describe
+- `rds.instances.*.conf`
+    - describe
+- `rds.instances.*.status`
+    - describe
+- `rds.instances.*.all`
+    - describe
 - `redshift.clusters.*.conf`
     - describe
-- `redshift.clusters.*.status`
+- `redshift.clusters.*.all`
     - describe
 - `redshift.clusters.*.connection`
     - describe
