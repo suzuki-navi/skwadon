@@ -127,10 +127,15 @@ class NamespaceHandler(Handler):
             conf = self.handler_map[self.conf_key].do_get(None, False)
             if conf is None:
                 return None
+        def sub(name, src_data):
+            if name in self.handler_map:
+                return self.handler_map[name].do_get(src_data, thats_all_flag)
+            else:
+                return None
         result = action_lib.encode_for_get_list(
             src_data, thats_all_flag, self.default_keys,
             lambda: self.handler_map.keys(),
-            lambda name, src_data: self.handler_map[name].do_get(src_data, thats_all_flag),
+            lambda name, src_data: sub(name, src_data),
         )
         return result
 

@@ -64,9 +64,9 @@ assumeRolePolicyを編集する
 - `lambda.functions.*.sources`
     - describe, create, update
 - `stepfunctions.stateMachines.*.conf`
-    - describe, update
+    - describe, create, update
 - `stepfunctions.stateMachines.*.definition`
-    - describe, update
+    - describe, create, update
 - `glue.crawlers.*.conf`
     - describe, create, update, delete
 - `glue.crawlers.*.status`

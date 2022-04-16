@@ -66,14 +66,32 @@ class StateMachineBasicHandler(common_action.ResourceHandler):
             else:
                 raise
 
+    def _create(self, confirmation_flag, src_data):
+        update_data = {}
+        update_data["Name"] = self.machine_name
+        update_data["Definition"] = self._defaultDefinition()
+        for key in self._properties_for_create:
+            if key in src_data:
+                update_data[key] = src_data[key]
+        update_data = sic_lib.dict_key_to_lower(update_data)
+        sic_main.exec_put(confirmation_flag,
+            f"stepfunctions_client.create_state_machine(name = {self.machine_name}, ...)",
+            lambda:
+                self.stepfunctions_client.create_state_machine(**update_data)
+        )
+        if confirmation_flag:
+            self.info = None
+
     def _update(self, confirmation_flag, src_data):
         curr_data = self._describe()
+        if curr_data is None:
+            curr_data = {}
         update_data = {}
         dirty = False
         for key in self._properties_for_update:
             if key in src_data:
                 update_data[key] = src_data[key]
-                if update_data[key] != curr_data[key]:
+                if key not in curr_data or update_data[key] != curr_data[key]:
                     dirty = True
             elif key in curr_data:
                 update_data[key] = curr_data[key]
@@ -85,10 +103,22 @@ class StateMachineBasicHandler(common_action.ResourceHandler):
                 lambda:
                     self.stepfunctions_client.update_state_machine(stateMachineArn = arn, **update_data)
             )
-            self.info = None
+            if confirmation_flag:
+                self.info = None
 
     def _calc_statemachine_arn(self):
         return calc_statemachine_arn(self.session, self.machine_name)
+
+    def _defaultDefinition(self):
+        return json.dumps({
+            "StartAt": "__skwadon_dummy",
+            "States": {
+                "__skwadon_dummy": {
+                    "Type": "Pass",
+                    "End": True,
+                },
+            },
+        })
 
     _properties = [
         "RoleArn",
@@ -96,6 +126,12 @@ class StateMachineBasicHandler(common_action.ResourceHandler):
         "LoggingConfiguration",
         "TracingConfiguration",
         "Definition"
+    ]
+    _properties_for_create = [
+        "RoleArn",
+        "Type",
+        "LoggingConfiguration",
+        "TracingConfiguration",
     ]
     _properties_for_update = [
         "RoleArn",
@@ -115,6 +151,9 @@ class StateMachineConfHandler(StateMachineBasicHandler):
             return None
         curr_data = sic_lib.pickup(info, self.properties)
         return curr_data
+
+    def create(self, confirmation_flag, src_data):
+        self._create(confirmation_flag, src_data)
 
     def update(self, confirmation_flag, src_data, curr_data):
         update_data = sic_lib.pickupAndCompareForUpdate(src_data, curr_data, self.properties_for_update)
@@ -141,9 +180,12 @@ class StateMachineDefinitionHandler(StateMachineBasicHandler):
         info = self._describe()
         if info == None:
             return None
-        return self._definition_str_to_dict(info["Definition"])
+        result = self._definition_str_to_dict(info["Definition"])
+        if "__skwadon_dummy" in result["States"]:
+            del result["States"]["__skwadon_dummy"]
+        return result
 
-    def update(self, confirmation_flag, src_data, curr_data):
+    def put(self, confirmation_flag, src_data):
         update_data = {
             "Definition": self._definition_dict_to_str(src_data),
         }
