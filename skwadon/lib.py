@@ -148,13 +148,27 @@ def encode_key(key):
     s = key
     s = urllib.parse.quote(s)
     s = s.replace(".", "%2E")
+    s = s.replace("/", "%2F")
     s = s.replace("~", "%7E")
     return s
 
 def decode_key(key):
     s = key
     s = s.replace("%2E", ".")
+    s = s.replace("%2F", "/")
     s = s.replace("%7E", "~")
     s = urllib.parse.unquote(s)
     return s
+
+def encode_tags(tags):
+    ret = []
+    for key, value in tags.items():
+        ret.append({"Key": key, "Value": value})
+    return ret
+
+def decode_tags(tags):
+    ret = {}
+    for elem in tags:
+        ret[elem["Key"]] = elem["Value"]
+    return ret
 

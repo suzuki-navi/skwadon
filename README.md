@@ -53,6 +53,12 @@ assumeRolePolicyを編集する
     - describe
 - `iam.roles.*.assumeRolePolicy`
     - describe, create, update, delete
+- `iam.policies.*.conf`
+    - describe
+- `iam.policies.*.policy`
+    - describe
+- `iam.policies.*.tags`
+    - describe
 - `s3.buckets.*.conf`
     - describe
 - `s3.buckets.*.bucketPolicy`
