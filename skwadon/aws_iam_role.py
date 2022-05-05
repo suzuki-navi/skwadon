@@ -5,6 +5,8 @@ import botocore.exceptions
 import skwadon.main as sic_main
 import skwadon.lib as sic_lib
 import skwadon.common_action as common_action
+import skwadon.aws as aws
+import skwadon.aws_iam_policy as iam_policy
 
 class RoleListHandler(common_action.ListHandler):
     def __init__(self, session):
@@ -14,6 +16,7 @@ class RoleListHandler(common_action.ListHandler):
     def init_client(self):
         if self.iam_client == None:
             self.iam_client = self.session.client("iam")
+            self.account_id = aws.fetch_account_id(self.session)
 
     def list(self):
         self.init_client()
@@ -34,11 +37,18 @@ class RoleListHandler(common_action.ListHandler):
             "conf", ["conf", "inlinePolicies", "attachedPolicies", "assumeRolePolicy"], {
             "conf": RoleConfHandler(self.iam_client, name),
             "inlinePolicies": RoleInlinePolicyListHandler(self.iam_client, name),
-            "attachedPolicies": AttachedPolicyListHandler(self.iam_client, name),
+            "attachedPolicies": AttachedPolicyListHandler(self.iam_client, name, self.account_id),
             "assumeRolePolicy": AssumeRolePolicyHandler(self.iam_client, name),
         })
 
 class RoleConfHandler(common_action.ResourceHandler):
+    properties = [
+        "Path",
+        "RoleId",
+        "Description",
+        "MaxSessionDuration",
+    ]
+
     def __init__(self, iam_client, role_name):
         self.iam_client = iam_client
         self.role_name = role_name
@@ -46,7 +56,7 @@ class RoleConfHandler(common_action.ResourceHandler):
     def describe(self):
         try:
             res = self.iam_client.get_role(RoleName = self.role_name)
-            curr_data = sic_lib.pickup(res["Role"], ["Description", "MaxSessionDuration"])
+            curr_data = sic_lib.pickup(res["Role"], self.properties)
             return curr_data
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchEntity":
@@ -147,16 +157,17 @@ class RoleInlinePolicyHandler(common_action.ResourceHandler):
         )
 
 class AttachedPolicyListHandler(common_action.ListHandler):
-    def __init__(self, iam_client, role_name):
+    def __init__(self, iam_client, role_name, account_id):
         self.iam_client = iam_client
         self.role_name = role_name
+        self.account_id = account_id
 
     def list(self):
         result = []
         res = self.iam_client.list_attached_role_policies(RoleName = self.role_name)
         while True:
             for elem in res["AttachedPolicies"]:
-                name = elem["PolicyName"]
+                name = iam_policy.policy_arn_to_name(elem["PolicyArn"], self.account_id)
                 result.append(name)
             if not "Marker" in res:
                 break

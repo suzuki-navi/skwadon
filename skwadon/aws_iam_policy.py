@@ -25,15 +25,8 @@ class PolicyListHandler(common_action.ListHandler):
         while True:
             for elem in res["Policies"]:
                 arn = elem["Arn"]
-                m = re.compile("\Aarn:aws:iam::([^:]*):policy/([^:]+)\Z").search(arn)
-                if not m:
-                    print(f"DEBUG {arn}")
-                    continue
-                if m.group(1) == self.account_id:
-                    name = sic_lib.encode_key(m.group(2))
-                elif m.group(1) == "aws":
-                    name = sic_lib.encode_key("aws//" + m.group(2))
-                else:
+                name = policy_arn_to_name(arn, self.account_id)
+                if name is None:
                     continue
                 result.append(name)
             if not "Marker" in res:
@@ -43,11 +36,7 @@ class PolicyListHandler(common_action.ListHandler):
 
     def child_handler(self, name):
         self.init_client()
-        name = sic_lib.decode_key(name)
-        if name.startswith("aws//"):
-            arn = f"arn:aws:iam::aws:policy/{name[5:]}"
-        else:
-            arn = f"arn:aws:iam::{self.account_id}:policy/{name}"
+        arn = policy_name_to_arn(name, self.account_id)
         return common_action.NamespaceHandler(
             "conf", ["conf", "policy", "tag"], {
                 "conf": PolicyConfHandler(self.iam_client, arn),
@@ -56,10 +45,29 @@ class PolicyListHandler(common_action.ListHandler):
             },
         )
 
+def policy_arn_to_name(arn, account_id):
+    m = re.compile("\Aarn:aws:iam::([^:]*):policy/([^:]+)\Z").search(arn)
+    if not m:
+        return None
+    if m.group(1) == account_id:
+        return sic_lib.encode_key(m.group(2))
+    elif m.group(1) == "aws":
+        return sic_lib.encode_key("aws//" + m.group(2))
+    else:
+        return None
+
+def policy_name_to_arn(name, account_id):
+    name = sic_lib.decode_key(name)
+    if name.startswith("aws//"):
+        return f"arn:aws:iam::aws:policy/{name[5:]}"
+    else:
+        return f"arn:aws:iam::{account_id}:policy/{name}"
+
 class PolicyConfHandler(common_action.ResourceHandler):
     properties = [
-        "Description",
+        "Path",
         "PolicyId",
+        "Description",
         "IsAttachable",
     ]
 

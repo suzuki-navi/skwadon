@@ -53,6 +53,12 @@ assumeRolePolicyを編集する
     - describe
 - `iam.roles.*.assumeRolePolicy`
     - describe, create, update, delete
+- `iam.groups.*.conf`
+    - describe
+- `iam.groups.*.inlinePolicies.*`
+    - describe
+- `iam.groups.*.attachedPolicies`
+    - describe
 - `iam.policies.*.conf`
     - describe
 - `iam.policies.*.policy`

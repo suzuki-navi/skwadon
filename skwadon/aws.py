@@ -7,6 +7,7 @@ import botocore.exceptions
 
 import skwadon.main as sic_main
 import skwadon.common_action as common_action
+import skwadon.aws_iam_group        as aws_iam_group
 import skwadon.aws_iam_role         as aws_iam_role
 import skwadon.aws_iam_policy       as aws_iam_policy
 import skwadon.aws_s3_bucket        as aws_s3_bucket
@@ -35,6 +36,7 @@ def get_handler(src_data):
     session = create_aws_session(src_data)
     return common_action.NamespaceHandler(
         None, [], {
+        "iam.groups": aws_iam_group.GroupListHandler(session),
         "iam.roles": aws_iam_role.RoleListHandler(session),
         "iam.policies": aws_iam_policy.PolicyListHandler(session),
         "s3.buckets": aws_s3_bucket.BucketListHandler(session),
