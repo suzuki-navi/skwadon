@@ -9,3 +9,5 @@ Pipfile*
 /var
 
 .venv/
+
+/dist/
