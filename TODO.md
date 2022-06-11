@@ -1,0 +1,4 @@
+
+Lambdaのcreate_functionのときはVpcConfigの中にVpcIdを含められない
+
+

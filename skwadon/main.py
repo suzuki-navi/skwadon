@@ -13,13 +13,17 @@ def main():
     # interprete parameters
     (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm) = parse_args()
 
+    if help_flag:
+        print_help()
+        return
+
     # check parameters
-    (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm) = check_args \
-        (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
+    (action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm) = check_args \
+        (action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
 
     # execution
     exec_main \
-        (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
+        (action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
 
 ####################################################################################################
 # interprete parameters
@@ -124,7 +128,7 @@ def parse_args():
 # パラメータの組み合わせチェック
 ####################################################################################################
 
-def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm):
+def check_args(action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm):
     if len(path) > 0 and type is None:
         raise Exception("-p option needs aws parameter")
 
@@ -213,14 +217,30 @@ def check_args(help_flag, action, is_simple, is_full, is_diff, is_completion, th
             path2.append([])
         path = path2
 
-    return (help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
+    return (action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm)
+
+####################################################################################################
+# ヘルプ
+####################################################################################################
+
+def print_help():
+    help_str = """
+skwadon [OPTIONS]
+
+OPTION:
+    --help
+    --profile <AWS_PROFILE_NAME>
+    --region <AWS_REGION_NAME>
+    ...
+""".strip()
+    print(help_str)
 
 ####################################################################################################
 # execution
 # 実行
 ####################################################################################################
 
-def exec_main(help_flag, action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm):
+def exec_main(action, is_simple, is_full, is_diff, is_completion, thats_all_flag, type, profile, path, src_file, is_dryrun, is_inplace, confirm):
     global global_confirmation_flag
     confirmation_flag = False
 

@@ -38,7 +38,7 @@ assumeRolePolicyを編集する
 
 ## Usage
 
-    $ skwadon [get] [-r] [--full] [--diff] [aws [--profile AWS_PROFILE] [[-p] PATH]] [[-i] [-s] SRC_FILE] [< SRC_FILE]
+    $ skwadon [get] [-r] [--full] [--diff] [--thats-all] [aws [--profile AWS_PROFILE] [[-p] PATH]] [[-i] [-s] SRC_FILE] [< SRC_FILE]
     $ skwadon put [--dry-run|--diff] [aws [--profile AWS_PROFILE] [[-p] PATH] [[-s] SRC_FILE]] [< SRC_FILE]
 
 ![squirrel](image.jpg)
