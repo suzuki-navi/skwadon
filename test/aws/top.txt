@@ -1,0 +1,9 @@
+$ pipenv run skwadon aws --profile skwadon-test
+
+> iam: {}
+> s3: {}
+> lambda: {}
+> stepFunctions: {}
+> glue: {}
+> rds: {}
+> redshift: {}
