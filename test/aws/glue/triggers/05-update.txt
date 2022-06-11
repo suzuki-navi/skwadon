@@ -1,0 +1,12 @@
+$ pipenv run skwadon aws --profile skwadon-test glue.triggers.skwadon-test-1 -s var/input.txt put --force
+
+< conf:
+<   Type: SCHEDULED
+<   Description: ''
+<   Schedule: cron(0 10 * * ? *)
+<   Actions:
+<   - JobName: skwadon-test-aaa
+< status: {}
+
+> aws(proifle=skwadon-test): glue_client.update_trigger(Name = skwadon-test-1, TriggerUpdate = {...})
+> complete put action

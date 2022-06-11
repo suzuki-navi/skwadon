@@ -1,0 +1,10 @@
+$ pipenv run skwadon aws --profile skwadon-test glue.triggers.skwadon-test-1
+
+> conf:
+>   Type: SCHEDULED
+>   Description: ''
+>   Schedule: cron(0 10 * * ? *)
+>   Actions:
+>   - JobName: skwadon-test-aaa
+> status:
+>   State: CREATED

@@ -99,6 +99,8 @@ assumeRolePolicyを編集する
     - describe, create, update
 - `glue.connections.*.connection`
     - describe
+- `glue.triggers.*.conf`
+    - describe, create, update, delete
 - `rds.instances.*.conf`
     - describe
 - `rds.instances.*.status`

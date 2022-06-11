@@ -22,7 +22,7 @@ check() {
     cat $filepath | (grep '^< ' || true) | cut -b3- > $basedir/var/input.txt
     cat $filepath | (grep '^> ' || true) | cut -b3- > $basedir/var/expected.txt
     cat $filepath
-    (cd $basedir; $code) | strip_diff > $basedir/var/actual.txt
+    (cd $basedir; bash -c "$code") | strip_diff > $basedir/var/actual.txt
     if ! diff -u $basedir/var/expected.txt $basedir/var/actual.txt > /dev/null; then
         echo
         cat $basedir/var/actual.txt | sed -e 's/^/> /g'

@@ -1,0 +1,4 @@
+$ pipenv run skwadon aws --profile skwadon-test glue.triggers | grep skwadon-test
+
+> skwadon-test-1: {}
+
