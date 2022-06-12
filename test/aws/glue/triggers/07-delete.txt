@@ -2,6 +2,5 @@ $ pipenv run skwadon aws --profile skwadon-test glue.triggers.skwadon-test-1 -s 
 
 < null
 
-> aws(proifle=skwadon-test): glue_client.delete_trigger(Name = skwadon-test-1)
+> aws(proifle=skwadon-test): glue_client.delete_trigger(Name=skwadon-test-1)
 > complete put action
-

@@ -7,4 +7,4 @@ $ pipenv run skwadon aws --profile skwadon-test glue.triggers.skwadon-test-1
 >   Actions:
 >   - JobName: skwadon-test-aaa
 > status:
->   State: CREATED
+>   State: ACTIVATED

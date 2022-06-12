@@ -69,25 +69,30 @@ class TriggerConfHandler(common_action.ResourceHandler):
         update_data = copy.copy(src_data)
         update_data["Name"] = self.trigger_name
         sic_main.exec_put(confirmation_flag,
-            f"glue_client.create_trigger(Name: {self.trigger_name}, ...)",
+            f"glue_client.create_trigger({{Name: {self.trigger_name}, ...}})",
             lambda:
                 self.glue_client.create_trigger(**update_data)
+        )
+        sic_main.exec_put(confirmation_flag,
+            f"glue_client.start_trigger(Name={self.trigger_name})",
+            lambda:
+                self.glue_client.start_trigger(Name=self.trigger_name)
         )
 
     def update(self, confirmation_flag, src_data, curr_data):
         update_data = sic_lib.pickup(src_data, self.properties_for_update)
         sic_main.exec_put(confirmation_flag,
-            f"glue_client.update_trigger(Name = {self.trigger_name}, TriggerUpdate = {{...}})",
+            f"glue_client.update_trigger(Name={self.trigger_name}, TriggerUpdate={{...}})",
             lambda:
-                self.glue_client.update_trigger(Name = self.trigger_name,
-                TriggerUpdate = update_data)
+                self.glue_client.update_trigger(Name=self.trigger_name,
+                TriggerUpdate=update_data)
         )
 
     def delete(self, confirmation_flag, curr_data):
         sic_main.exec_put(confirmation_flag,
-            f"glue_client.delete_trigger(Name = {self.trigger_name})",
+            f"glue_client.delete_trigger(Name={self.trigger_name})",
             lambda:
-                self.glue_client.delete_trigger(Name = self.trigger_name)
+                self.glue_client.delete_trigger(Name=self.trigger_name)
         )
 
 class TriggerStatusHandler(common_action.ResourceHandler):

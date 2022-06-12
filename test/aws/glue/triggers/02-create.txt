@@ -8,6 +8,6 @@ $ pipenv run skwadon aws --profile skwadon-test glue.triggers.skwadon-test-1 -s 
 <   - JobName: skwadon-test-aaa
 < status: {}
 
-> aws(proifle=skwadon-test): glue_client.create_trigger(Name: skwadon-test-1, ...)
+> aws(proifle=skwadon-test): glue_client.create_trigger({Name: skwadon-test-1, ...})
+> aws(proifle=skwadon-test): glue_client.start_trigger(Name=skwadon-test-1)
 > complete put action
-

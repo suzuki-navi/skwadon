@@ -1,4 +1,5 @@
 
 Lambdaのcreate_functionのときはVpcConfigの中にVpcIdを含められない
 
+Glue Triggerは作成直後にACTIVATEにしたが、On-demandはやめたほうがよさそう
 
