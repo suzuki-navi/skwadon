@@ -6,7 +6,7 @@ with open('requirements.txt') as requirements_file:
 
 setup(
     name        = "skwadon",
-    version     = "0.0.1",
+    version     = "0.0.2",
     description = "skwadon",
     author      = "suzuki-navi",
     packages    = find_packages(),
@@ -17,5 +17,6 @@ setup(
             "skwadon = skwadon.main:main",
         ]
     },
+    url          = "https://github.com/suzuki-navi/skwadon",
 )
 
